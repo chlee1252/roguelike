@@ -31,8 +31,24 @@ func _run() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/upgrades.png")
+	game.state = "playing"
+	game.pause_run()
+	await _capture("pause")
+	game._show_settings()
+	await _capture("settings")
+	game.battle.victory = true
+	game._show_results()
+	await _capture("victory")
+	game.battle.victory = false
+	game._show_results()
+	await _capture("results")
 	game._clear_save()
 	game.audio.silence()
 	await create_timer(0.1).timeout
 	print("VISUAL_TEST_OK")
 	quit()
+
+func _capture(screen_name: String) -> void:
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/" + screen_name + ".png")

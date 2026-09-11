@@ -48,7 +48,9 @@ func _run() -> void:
 	var before: Vector2 = game.battle.player
 	game._physics_process(0.1)
 	check(game.battle.player.x > before.x, "Joystick must move commando")
-	game.pause_run()
+	game._notification(MainLoop.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	await process_frame
+	check(game.state == "paused", "Background notification must safely pause the game")
 	var paused_time: float = game.battle.elapsed
 	game._physics_process(0.1)
 	check(game.battle.elapsed == paused_time and game.movement == Vector2.ZERO, "Pause must freeze time and clear input")

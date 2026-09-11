@@ -8,7 +8,7 @@ const ENEMY_SPEED := [29.0, 22.0, 42.0, 19.0, 14.0, 35.0, 25.0, 12.0]
 const ENEMY_RADIUS := [8.0, 8.0, 8.0, 9.0, 20.0, 22.0, 13.0, 30.0]
 const WAVE_CAP := [80, 120, 170, 220, 280, 330, 380, 430, 480, 500]
 const WAVE_RATE := [3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0, 17.0, 19.0, 14.0]
-const TITLES := ["CONTACT", "CROSSFIRE", "RUSH HOUR", "HEAVY ARMOR", "BREAK THE LINE", "AIR RAID", "COMBINED ARMS", "NO MAN'S LAND", "LAST STAND", "EXTRACTION"]
+const TITLES := ["첫 교전", "엇갈리는 포화", "돌격의 시간", "중장갑 부대", "포위망 돌파", "공중 습격", "합동 공세", "고립된 전선", "마지막 저항", "탈출 작전"]
 var enemies := EntityPool.new(500)
 var shots := EntityPool.new(400)
 var hostile := EntityPool.new(600)
@@ -125,7 +125,7 @@ func _spawn(dt: float) -> void:
 				elite_ids[spawned] = enemies.generation[spawned]
 				enemies.health[spawned] *= 1.8
 			fired_events[event[0]] = true
-			events.append("COMMAND TANK INBOUND" if event[1] == 7 else "ELITE CONTACT" if event[1] == 6 else "REINFORCEMENTS")
+			events.append("지휘 전차 접근 중" if event[1] == 7 else "정예 부대 출현" if event[1] == 6 else "적 증원 병력 접근")
 
 func _type_count(type: int) -> int:
 	var count := 0
@@ -418,7 +418,7 @@ func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -
 		if type == 7:
 			for bullet in hostile.capacity:
 				hostile.release(bullet)
-			events.append("COMMAND TANK DESTROYED")
+			events.append("지휘 전차 격파")
 		if rng.randf() < 0.012:
 			pickups.spawn(at + Vector2(8, 0), 1, 20)
 		add_effect(at, 10 if type < 4 else 28, 0.22, 2)
@@ -477,7 +477,7 @@ func _collect(dt: float) -> void:
 			if not eligible.is_empty():
 				evolved[eligible[0]] = true
 				caches.remove_at(i)
-				events.append(["CERBERUS ONLINE", "INFERNO ONLINE", "ROLLING THUNDER ONLINE"][eligible[0]])
+				events.append(["케르베로스 진화 완료", "인페르노 진화 완료", "롤링 썬더 진화 완료"][eligible[0]])
 				_sound("evolve")
 
 func eligible_evolutions() -> Array[int]:

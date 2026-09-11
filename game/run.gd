@@ -1,8 +1,8 @@
 extends Control
 
-const WEAPON_NAMES := ["HEAVY MACHINE GUN", "TACTICAL FLAMETHROWER", "ARTILLERY RADIO"]
-const SUPPORT_NAMES := ["AMMO BELT", "PRESSURIZED FUEL", "SIGNAL AMPLIFIER"]
-const EVOLUTION_NAMES := ["CERBERUS ROTARY CANNON", "INFERNO PROJECTOR", "ROLLING THUNDER"]
+const WEAPON_NAMES := ["중기관총", "전술 화염방사기", "포격 지원 무전기"]
+const SUPPORT_NAMES := ["탄약 벨트", "고압 연료통", "신호 증폭기"]
+const EVOLUTION_NAMES := ["케르베로스", "인페르노", "롤링 썬더"]
 var battle: Battle
 var field: Battlefield
 var hud: Control
@@ -29,11 +29,16 @@ var audio: CombatAudio
 var save_clock := 0.0
 var mirrored := false
 var reduced_effects := false
+var health_text: Label
 var save_path := "user://deployment.dat"
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var ui_theme := Theme.new()
+	ui_theme.default_font = GameSkin.REGULAR
+	ui_theme.default_font_size = 12
+	theme = ui_theme
 	field = Battlefield.new()
 	add_child(field)
 	battle = Battle.new(42)
@@ -48,80 +53,99 @@ func _ready() -> void:
 	add_child(controls_layer)
 	_show_menu()
 
-func _label(parent: Node, text: String, at: Vector2, font_size: int, color := Color("e5e8d6")) -> Label:
+func _label(parent: Node, text: String, at: Vector2, font_size: int, color := GameSkin.INK) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.position = at
 	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_font_override("font", GameSkin.BOLD if font_size >= 16 else GameSkin.REGULAR)
 	label.add_theme_color_override("font_color", color)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(label)
 	return label
 
-func _button(parent: Node, text: String, rect: Rect2, action: Callable) -> Button:
+func _button(parent: Node, text: String, rect: Rect2, action: Callable, primary: bool = false) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.position = rect.position
 	button.size = rect.size
 	button.add_theme_font_size_override("font_size", 12)
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color("283d36")
-	normal.border_color = Color("819176")
-	normal.set_border_width_all(1)
+	button.add_theme_font_override("font", GameSkin.BOLD)
+	var normal := GameSkin.box(GameSkin.MINT if primary else Color("2a3b43"), 10)
 	normal.content_margin_left = 10
 	normal.content_margin_right = 10
 	button.add_theme_stylebox_override("normal", normal)
 	var hover := normal.duplicate() as StyleBoxFlat
-	hover.bg_color = Color("48624b")
+	hover.bg_color = Color("c3eddb") if primary else Color("3a5058")
 	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", hover)
+	var pressed := normal.duplicate() as StyleBoxFlat
+	pressed.bg_color = Color("85c6ac") if primary else Color("1f3038")
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("focus", GameSkin.box(Color.TRANSPARENT, 10, Color("bedccd")))
+	for state_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		button.add_theme_color_override(state_name, Color("183a32") if primary else GameSkin.INK)
 	button.pressed.connect(action)
 	parent.add_child(button)
 	screen_buttons.append(button)
 	return button
 
-func _panel(parent: Node, rect: Rect2, color: Color) -> ColorRect:
-	var panel := ColorRect.new()
+func _panel(parent: Node, rect: Rect2, color: Color, radius: int = 14) -> Panel:
+	var panel := Panel.new()
 	panel.position = rect.position
 	panel.size = rect.size
-	panel.color = color
+	panel.add_theme_stylebox_override("panel", GameSkin.box(color, radius))
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(panel)
 	return panel
+
+func _backdrop() -> void:
+	_panel(overlay, Rect2(0, 0, 640, 360), Color(0.045, 0.075, 0.10, 0.94), 0)
+
+func _chip(parent: Node, text: String, rect: Rect2, color := GameSkin.MINT) -> void:
+	_panel(parent, rect, Color(color, 0.10), 8)
+	_label(parent, text, rect.position + Vector2(10, 4), 9, color)
+
+func _icon(parent: Node, index: int, at: Vector2, tint := GameSkin.MINT) -> void:
+	var glyph := EquipmentGlyph.new()
+	glyph.position = at
+	glyph.size = Vector2(32, 32)
+	glyph.icon = index
+	glyph.ink = tint
+	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(glyph)
 
 func _build_hud() -> void:
 	hud = Control.new()
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hud)
-	_panel(hud, Rect2(0, 0, 640, 44), Color("111e1e"))
-	_panel(hud, Rect2(0, 333, 640, 27), Color("111e1e"))
-	title = _label(hud, "OPERATION / LAST COMMANDO", Vector2(14, 7), 10, Color("b4bb9b"))
-	stats = _label(hud, "", Vector2(252, 7), 12)
-	loadout = _label(hud, "", Vector2(14, 341), 9, Color("aab5a2"))
-	wave_label = _label(hud, "", Vector2(210, 53), 14, Color("e5bf72"))
+	_panel(hud, Rect2(12, 10, 155, 39), Color(0.06, 0.11, 0.14, 0.92), 12)
+	_panel(hud, Rect2(235, 10, 300, 36), Color(0.06, 0.11, 0.14, 0.92), 12)
+	title = _label(hud, "생존자 01", Vector2(24, 15), 10, GameSkin.MUTED)
+	health_text = _label(hud, "100", Vector2(135, 15), 10, GameSkin.MINT)
+	stats = _label(hud, "", Vector2(251, 19), 12)
+	_panel(hud, Rect2(12, 324, 616, 26), Color(0.06, 0.11, 0.14, 0.88), 9)
+	loadout = _label(hud, "", Vector2(24, 330), 9, GameSkin.MUTED)
+	wave_label = _label(hud, "", Vector2(150, 58), 13, Color("e6c69b"))
+	wave_label.size.x = 340
+	wave_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	health_bar = ProgressBar.new()
-	health_bar.position = Vector2(14, 26)
-	health_bar.size = Vector2(140, 6)
-	_style_bar(health_bar, Color("a9b66c"))
+	health_bar.position = Vector2(24, 35)
+	_style_bar(health_bar, GameSkin.MINT)
 	health_bar.show_percentage = false
 	health_bar.max_value = 100
 	hud.add_child(health_bar)
 	xp_bar = ProgressBar.new()
-	xp_bar.position = Vector2(0, 40)
-	xp_bar.size = Vector2(640, 3)
-	_style_bar(xp_bar, Color("6cbba7"))
+	xp_bar.position = Vector2(245, 43)
+	_style_bar(xp_bar, Color("91bbd8"))
 	xp_bar.show_percentage = false
 	hud.add_child(xp_bar)
-	health_bar.size = Vector2(140, 6)
-	xp_bar.size = Vector2(640, 3)
-	_button(hud, "II", Rect2(584, 4, 42, 31), pause_run)
+	health_bar.size = Vector2(131, 4)
+	xp_bar.size = Vector2(280, 3)
+	_button(hud, "Ⅱ", Rect2(580, 10, 48, 38), pause_run)
 
 func _style_bar(bar: ProgressBar, color: Color) -> void:
-	var background := StyleBoxFlat.new()
-	background.bg_color = Color("293d35")
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = color
-	bar.add_theme_stylebox_override("background", background)
-	bar.add_theme_stylebox_override("fill", fill)
+	bar.add_theme_stylebox_override("background", GameSkin.box(Color("31434a"), 3))
+	bar.add_theme_stylebox_override("fill", GameSkin.box(color, 3))
 
 func _clear_overlay() -> void:
 	if is_instance_valid(overlay):
@@ -137,17 +161,28 @@ func _show_menu() -> void:
 	audio.silence()
 	hud.visible = false
 	_clear_overlay()
-	_panel(overlay, Rect2(0, 0, 640, 360), Color(0.035, 0.075, 0.075, 0.94))
-	_panel(overlay, Rect2(33, 36, 3, 284), Color("d5b36a"))
-	_label(overlay, "FIELD OPERATIONS DIVISION     /     01", Vector2(53, 36), 10, Color("a9b592"))
-	_label(overlay, "LAST\nCOMMANDO", Vector2(50, 68), 44)
-	_label(overlay, "ONE SOLDIER. TEN MINUTES. NO BACKUP.", Vector2(54, 185), 10, Color("d5b36a"))
-	_label(overlay, "Move through the crossfire. Your weapons handle the rest.\nCollect dog tags. Upgrade your arsenal. Reach extraction.", Vector2(54, 218), 11, Color("aebaa9"))
-	_button(overlay, "DEPLOY  →", Rect2(54, 277, 210, 41), start_run)
+	_panel(overlay, Rect2(0, 0, 640, 360), GameSkin.BASE, 0)
+	_label(overlay, "라스트 코만도", Vector2(32, 23), 16)
+	_button(overlay, "설정", Rect2(548, 20, 60, 32), _show_settings)
+	_chip(overlay, "10분 생존  ·  자동 전투", Rect2(32, 67, 144, 24))
+	_label(overlay, "끝까지,\n살아남아라.", Vector2(30, 101), 37)
+	_label(overlay, "포위된 전선, 남은 건 당신뿐.\n공격은 맡기고, 살아남을 길을 찾으세요.", Vector2(32, 204), 12, GameSkin.MUTED)
+	var art := MissionArt.new()
+	art.position = Vector2(340, 72)
+	art.commando = field.sprites[0]
+	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	overlay.add_child(art)
+	_label(overlay, "작전 01", Vector2(358, 84), 10, GameSkin.MINT)
+	_label(overlay, "고립된 전선", Vector2(358, 101), 15)
+	_chip(overlay, "적 보병 · 전차 · 공격 헬기", Rect2(363, 249, 220, 22), Color("d9c7a3"))
 	if FileAccess.file_exists(save_path):
-		_button(overlay, "CONTINUE", Rect2(281, 277, 150, 41), _continue_run)
-	_button(overlay, "SETTINGS", Rect2(447, 277, 140, 41), _show_settings)
-	_label(overlay, "WASD / ARROWS or drag to move   ·   ESC to pause", Vector2(54, 331), 9, Color("8e9e92"))
+		_button(overlay, "이어하기  →", Rect2(32, 269, 158, 44), _continue_run, true)
+		_button(overlay, "새 작전", Rect2(200, 269, 108, 44), start_run)
+	else:
+		_button(overlay, "작전 시작  →", Rect2(32, 269, 244, 44), start_run, true)
+	_label(overlay, "목표", Vector2(343, 294), 10, GameSkin.MUTED)
+	_label(overlay, "무기를 진화시키고, 10분 뒤 탈출하세요.", Vector2(373, 294), 10)
+	_label(overlay, "WASD / 방향키 · 터치 드래그로 이동     Esc 일시정지", Vector2(32, 334), 9, GameSkin.MUTED)
 
 func start_run() -> void:
 	_clear_save()
@@ -174,13 +209,14 @@ func pause_run() -> void:
 	audio.silence()
 	_reset_input()
 	_clear_overlay()
-	_panel(overlay, Rect2(0, 0, 640, 360), Color(0.035, 0.075, 0.075, 0.92))
-	_label(overlay, "OPERATION PAUSED", Vector2(207, 91), 24)
-	_label(overlay, "Take a breath. The battlefield can wait.", Vector2(206, 133), 11, Color("b4bb9b"))
-	_label(overlay, "EVOLUTION: Weapon 6 + matching Support 2 + gold cache", Vector2(155, 155), 10, Color("d5b36a"))
-	_button(overlay, "RESUME", Rect2(215, 180, 210, 42), _resume)
-	_button(overlay, "SAVE & BRIEFING", Rect2(215, 237, 210, 36), _save_and_menu)
-	_button(overlay, "SETTINGS", Rect2(215, 286, 210, 32), _show_settings)
+	_backdrop()
+	_panel(overlay, Rect2(158, 27, 324, 306), GameSkin.SURFACE, 20)
+	_chip(overlay, "잠시 쉬어가세요", Rect2(261, 46, 117, 23))
+	_label(overlay, "작전 일시정지", Vector2(216, 80), 27)
+	_label(overlay, "준비가 되면 전선으로 돌아가세요.", Vector2(224, 122), 11, GameSkin.MUTED)
+	_button(overlay, "계속하기", Rect2(182, 161, 276, 42), _resume, true)
+	_button(overlay, "저장하고 나가기", Rect2(182, 213, 276, 40), _save_and_menu)
+	_button(overlay, "설정", Rect2(182, 263, 276, 40), _show_settings)
 
 func _resume() -> void:
 	_clear_overlay()
@@ -254,12 +290,13 @@ func _update_hud(dt: float) -> void:
 	health_bar.value = battle.hp
 	xp_bar.max_value = battle.xp_needed()
 	xp_bar.value = battle.xp
-	stats.text = "%02d:%02d    LV %02d    %04d KILLS" % [int(battle.elapsed) / 60, int(battle.elapsed) % 60, battle.level, battle.kills]
+	health_text.text = str(int(battle.hp))
+	stats.text = "%02d:%02d     ·     레벨 %02d     ·     처치 %04d" % [int(battle.elapsed) / 60, int(battle.elapsed) % 60, battle.level, battle.kills]
 	var parts: Array[String] = []
 	for i in 3:
 		if battle.weapons[i] > 0:
-			parts.append((EVOLUTION_NAMES[i] + " ★") if battle.evolved[i] else ["HMG", "FLAME", "RADIO"][i] + " " + str(battle.weapons[i]) + "/6" + " S" + str(battle.supports[i]))
-	loadout.text = "   /   ".join(parts) + "      ·      EXTRACT AT 10:00"
+			parts.append((EVOLUTION_NAMES[i] + " ★") if battle.evolved[i] else ["기관총", "화염방사기", "포격"][i] + " " + str(battle.weapons[i]) + "/6" + " · 지원 " + str(battle.supports[i]))
+	loadout.text = "      ".join(parts) + "      |      10:00 탈출"
 	if battle.minute() != last_minute and state == "playing":
 		last_minute = battle.minute()
 		wave_label.text = "%02d / %s" % [last_minute + 1, Battle.TITLES[last_minute]]
@@ -270,7 +307,7 @@ func _update_hud(dt: float) -> void:
 	if battle.eligible_evolutions().is_empty():
 		for cache in battle.caches:
 			if cache.distance_to(battle.player) < 35:
-				wave_label.text = "CACHE: WEAPON 6 + SUPPORT 2"
+				wave_label.text = "진화 보급함 · 무기 6 + 지원 2레벨 필요"
 				banner_time = 0.2
 	banner_time -= dt
 	wave_label.visible = banner_time > 0 and state == "playing"
@@ -281,11 +318,11 @@ func _update_hud(dt: float) -> void:
 
 func _draw_controls() -> void:
 	if state == "resuming":
-		controls_layer.draw_string(ThemeDB.fallback_font, Vector2(278, 165), "READY", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color("e5bf72"))
+		controls_layer.draw_string(GameSkin.BOLD, Vector2(270, 165), "준비하세요", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, GameSkin.MINT)
 	if state == "playing" and (joystick_finger >= 0 or mouse_drag):
-		controls_layer.draw_circle(joystick_origin, 42, Color(0.7, 0.8, 0.7, 0.1))
+		controls_layer.draw_circle(joystick_origin, 42, Color(0.64, 0.87, 0.78, 0.10))
 		controls_layer.draw_arc(joystick_origin, 42, 0, TAU, 40, Color(0.7, 0.8, 0.7, 0.4), 1)
-		controls_layer.draw_circle(joystick_origin + (joystick_position - joystick_origin).limit_length(40), 15, Color(0.8, 0.9, 0.75, 0.45))
+		controls_layer.draw_circle(joystick_origin + (joystick_position - joystick_origin).limit_length(40), 15, Color(0.64, 0.87, 0.78, 0.60))
 	if battle != null and battle.hit_flash > 0 and not reduced_effects:
 		controls_layer.draw_rect(Rect2(0, 0, 640, 360), Color(0.9, 0.2, 0.1, battle.hit_flash * 0.4))
 
@@ -295,21 +332,29 @@ func _show_upgrades(keep_options: bool = false) -> void:
 	if not keep_options:
 		options = _roll_options()
 	_clear_overlay()
-	_panel(overlay, Rect2(0, 0, 640, 360), Color(0.035, 0.075, 0.075, 0.96))
-	_label(overlay, "FIELD PROMOTION", Vector2(32, 27), 10, Color("d5b36a"))
-	_label(overlay, "UPGRADE YOUR ARSENAL", Vector2(32, 48), 25)
-	_label(overlay, "LEVEL %02d   /   Choose one requisition. Combat is paused." % battle.level, Vector2(33, 85), 11, Color("aebaa9"))
+	_backdrop()
+	_chip(overlay, "%d레벨 달성" % battle.level, Rect2(28, 21, 94, 24))
+	_label(overlay, "다음 한 수를 고르세요", Vector2(28, 54), 26)
+	_label(overlay, "장비 하나를 선택하세요. 선택하는 동안 전투는 멈춥니다.", Vector2(29, 91), 11, GameSkin.MUTED)
 	for i in options.size():
 		var id := options[i]
-		var x := 32 + i * 196
-		_panel(overlay, Rect2(x, 117, 184, 151), Color("21332e"))
-		_label(overlay, "0%d / REQUISITION" % (i + 1), Vector2(x + 12, 129), 9, Color("d5b36a"))
+		var x := 28 + i * 198
+		var tint: Color = [GameSkin.MINT, Color("efc79d"), Color("aebeed")][i]
+		_panel(overlay, Rect2(x, 123, 188, 171), GameSkin.SURFACE, 14)
+		_panel(overlay, Rect2(x + 14, 137, 40, 38), Color(tint, 0.10), 10)
+		var icon_index := int(id[1]) + (3 if id.begins_with("s") else 0) if id.length() == 2 else 6
+		_icon(overlay, icon_index, Vector2(x + 18, 139), tint)
+		var rank_text := "보급품"
+		if id.length() == 2:
+			var rank: int = battle.weapons[int(id[1])] if id.begins_with("w") else battle.supports[int(id[1])]
+			rank_text = "새 장비" if rank == 0 else "%d → %d 레벨" % [rank, rank + 1]
+		_label(overlay, rank_text, Vector2(x + 69, 148), 10, tint)
 		var description := _describe(id)
-		_label(overlay, description[0], Vector2(x + 12, 151), 11)
-		_label(overlay, description[1], Vector2(x + 12, 183), 10, Color("aebaa9"))
-		_button(overlay, "SELECT  [%d]" % (i + 1), Rect2(x, 276, 184, 39), _choose.bind(id))
+		_label(overlay, description[0], Vector2(x + 14, 185), 16)
+		_label(overlay, description[1], Vector2(x + 14, 214), 11, GameSkin.MUTED)
+		_button(overlay, "선택하기  ·  %d" % (i + 1), Rect2(x, 304, 188, 36), _choose.bind(id), i == 0)
 	if battle.rerolls > 0:
-		_button(overlay, "REROLL · 1", Rect2(470, 32, 135, 33), _reroll)
+		_button(overlay, "다시 뽑기 · 1회", Rect2(482, 27, 130, 34), _reroll)
 
 func _roll_options() -> Array[String]:
 	var candidates: Array[String] = []
@@ -340,18 +385,17 @@ func _roll_options() -> Array[String]:
 
 func _describe(id: String) -> Array[String]:
 	if id == "heal":
-		return ["MEDICAL SUPPLIES", "Restore 30 HP."]
+		return ["응급 의료품", "체력을 30 회복합니다.\n다시 버틸 힘을 얻으세요."]
 	if id == "supply":
-		return ["EMERGENCY AIRDROP", "Restore 15 HP.\nCollect all field XP."]
+		return ["긴급 공중 보급", "체력을 15 회복하고\n전장의 경험치를 모두 수집합니다."]
 	var index := int(id[1])
 	if id[0] == "w":
-		var names := ["HEAVY MACHINE GUN", "TACTICAL\nFLAMETHROWER", "ARTILLERY RADIO"]
 		var details := [
-			["Auto-fire at nearby threats.", "Damage 10 → 13", "Fire interval .25 → .20s", "Bullets pierce one enemy", "Damage 13 → 17\nRange 260 → 300", "Fire interval .20 → .16s"],
-			["Short-range flame cone.\n5 damage per tick.", "Tick damage 5 → 7", "Range 70 → 90", "Ignite: 4 damage/sec\nBurn lasts 3 seconds", "Cone 60° → 90°\nShorter cooling period", "Tick damage 7 → 9\nLonger firing cycle"],
-			["Automatic area strike.\n80 damage every 8s.", "Blast damage 80 → 110", "Blast radius 48 → 60", "Two shells per salvo", "Cooldown 8 → 6.5s", "Damage 110 → 140\nBlast radius 60 → 68"]]
-		return [names[index], "LEVEL %d → %d\n%s" % [battle.weapons[index], battle.weapons[index] + 1, details[index][battle.weapons[index]]]]
-	return [SUPPORT_NAMES[index], "LEVEL %d → %d\n%s\nEvolution needs W6 + S2." % [battle.supports[index], battle.supports[index] + 1, ["+10% projectile damage", "+10% flame range", "−10% artillery cooldown"][index]]]
+			["가까운 적을 자동으로 공격합니다.\n기본 피해량 10", "피해량 10 → 13", "발사 간격 0.25 → 0.20초", "탄환이 적 하나를 더 관통합니다.", "피해량 13 → 17\n사거리 260 → 300", "발사 간격 0.20 → 0.16초"],
+			["전방의 적을 불꽃으로 휩씁니다.\n지속 피해량 5", "지속 피해량 5 → 7", "사거리 70 → 90", "적을 3초 동안 불태웁니다.\n초당 추가 피해량 4", "공격 각도 60° → 90°\n냉각 시간이 짧아집니다.", "지속 피해량 7 → 9\n분사 시간이 길어집니다."],
+			["8초마다 자동으로 포격합니다.\n폭발 피해량 80", "폭발 피해량 80 → 110", "폭발 반경 48 → 60", "한 번에 포탄 두 발을 발사합니다.", "재사용 시간 8 → 6.5초", "피해량 110 → 140\n폭발 반경 60 → 68"]]
+		return [WEAPON_NAMES[index], details[index][battle.weapons[index]]]
+	return [SUPPORT_NAMES[index], ["기관총 피해량 +10%", "화염방사기 사거리 +10%", "포격 재사용 시간 −10%"][index] + "\n\n무기 6 · 지원 2레벨이면 진화 가능"]
 
 func _choose(id: String) -> void:
 	if state != "upgrading" or not options.has(id):
@@ -384,13 +428,19 @@ func _show_results() -> void:
 	state = "results"
 	_reset_input()
 	_clear_overlay()
-	_panel(overlay, Rect2(0, 0, 640, 360), Color(0.035, 0.075, 0.075, 0.94))
-	_label(overlay, "AFTER ACTION REPORT", Vector2(54, 44), 10, Color("d5b36a"))
-	_label(overlay, "EXTRACTION COMPLETE" if battle.victory else "SOLDIER DOWN", Vector2(50, 75), 32)
-	_label(overlay, "SURVIVED       %02d:%02d\nELIMINATIONS   %d\nFIELD LEVEL    %d" % [int(battle.elapsed) / 60, int(battle.elapsed) % 60, battle.kills, battle.level], Vector2(54, 137), 16)
-	_label(overlay, "Every deployment is a new chance.", Vector2(54, 226), 11, Color("aebaa9"))
-	_button(overlay, "DEPLOY AGAIN", Rect2(54, 278, 230, 42), start_run)
-	_button(overlay, "BRIEFING", Rect2(305, 278, 180, 42), _show_menu)
+	_backdrop()
+	_panel(overlay, Rect2(60, 28, 520, 300), GameSkin.SURFACE, 20)
+	_chip(overlay, "작전 결과", Rect2(84, 47, 76, 23))
+	_label(overlay, "무사히 돌아왔습니다" if battle.victory else "여기까지, 잘 버텼습니다", Vector2(84, 86), 29)
+	_label(overlay, "전선에서의 기록을 확인하세요.", Vector2(85, 128), 12, GameSkin.MUTED)
+	var values := ["%02d:%02d" % [int(battle.elapsed) / 60, int(battle.elapsed) % 60], str(battle.kills), str(battle.level)]
+	for i in 3:
+		var x := 84 + i * 156
+		_panel(overlay, Rect2(x, 164, 146, 76), Color("293d43"), 12)
+		_label(overlay, ["생존 시간", "처치한 적", "도달 레벨"][i], Vector2(x + 14, 174), 10, GameSkin.MUTED)
+		_label(overlay, values[i], Vector2(x + 14, 195), 25, GameSkin.MINT)
+	_button(overlay, "다시 도전하기", Rect2(84, 265, 244, 40), start_run, true)
+	_button(overlay, "처음 화면", Rect2(340, 265, 216, 40), _show_menu)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -400,13 +450,16 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
 		if is_instance_valid(audio):
 			audio.silence()
-		if state == "playing":
-			pause_run()
-		elif state == "resuming":
-			state = "playing"
-			pause_run()
-		elif state == "upgrading":
-			_save_session()
+		_save_session()
+		_pause_for_background.call_deferred()
+
+func _pause_for_background() -> void:
+	if not is_inside_tree():
+		return
+	if state == "resuming":
+		state = "playing"
+	if state == "playing":
+		pause_run()
 
 func _save_session() -> void:
 	if battle == null or battle.finished or state in ["menu", "results"]:
@@ -467,12 +520,17 @@ func _show_settings() -> void:
 	var return_to_menu := state == "menu"
 	_reset_input()
 	_clear_overlay()
-	_panel(overlay, Rect2(0, 0, 640, 360), Color(0.035, 0.075, 0.075, 0.98))
-	_label(overlay, "FIELD SETTINGS", Vector2(195, 47), 27)
-	_button(overlay, "SOUND: " + ("ON" if audio.enabled else "OFF"), Rect2(180, 110, 280, 40), _toggle_setting.bind("sound"))
-	_button(overlay, "JOYSTICK: " + ("RIGHT" if mirrored else "LEFT"), Rect2(180, 163, 280, 40), _toggle_setting.bind("mirrored"))
-	_button(overlay, "HIT FLASH: " + ("OFF" if reduced_effects else "ON"), Rect2(180, 216, 280, 40), _toggle_setting.bind("effects"))
-	_button(overlay, "BACK", Rect2(180, 282, 280, 40), _show_menu if return_to_menu else _return_pause)
+	_backdrop()
+	_panel(overlay, Rect2(130, 25, 380, 310), GameSkin.SURFACE, 20)
+	_label(overlay, "나에게 맞는 플레이", Vector2(154, 47), 25)
+	_label(overlay, "편안하게 조작할 수 있도록 설정하세요.", Vector2(155, 86), 11, GameSkin.MUTED)
+	for i in 3:
+		var y := 118 + i * 52
+		_panel(overlay, Rect2(150, y, 340, 44), Color("293b43"), 10)
+		_label(overlay, ["효과음", "조이스틱 위치", "피격 시 화면 효과"][i], Vector2(166, y + 13), 12)
+		var value := ("켜짐" if audio.enabled else "꺼짐") if i == 0 else ("오른쪽" if mirrored else "왼쪽") if i == 1 else ("꺼짐" if reduced_effects else "켜짐")
+		_button(overlay, value, Rect2(395, y + 6, 84, 32), _toggle_setting.bind(["sound", "mirrored", "effects"][i]), (i == 0 and audio.enabled) or (i == 2 and not reduced_effects))
+	_button(overlay, "돌아가기", Rect2(150, 283, 340, 34), _show_menu if return_to_menu else _return_pause)
 
 func _return_pause() -> void:
 	state = "playing"
