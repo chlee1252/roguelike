@@ -277,6 +277,9 @@ func dense_target(radius: float) -> int:
 					break
 	return best
 
+func gun_grip() -> Vector2:
+	return player + Vector2(7 if aim.x >= 0 else -7, -8)
+
 func _weapons(dt: float) -> void:
 	gun_clock -= dt
 	if gun_clock <= 0:
@@ -286,8 +289,10 @@ func _weapons(dt: float) -> void:
 			aim = direction
 			var count := 2 if evolved[0] else 1
 			for n in count:
-				var bullet := shots.spawn(player + direction.orthogonal() * (n * 5 - 2), 0,
-					(17 if weapons[0] >= 5 else 13 if weapons[0] >= 2 else 10) * (1 + supports[0] * 0.1), direction * 440, 0.7)
+				var muzzle := gun_grip() + direction * 14 + direction.orthogonal() * (n * 5 - 2)
+				var trajectory := muzzle.direction_to(enemies.position[target])
+				var bullet := shots.spawn(muzzle, 0,
+					(17 if weapons[0] >= 5 else 13 if weapons[0] >= 2 else 10) * (1 + supports[0] * 0.1), trajectory * 440, 0.7)
 				if bullet >= 0:
 					shot_hits[bullet] = []
 					shots.aux[bullet] = 3 if evolved[0] else 2 if weapons[0] >= 4 else 1
@@ -421,7 +426,7 @@ func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -
 			events.append("지휘 전차 격파")
 		if rng.randf() < 0.012:
 			pickups.spawn(at + Vector2(8, 0), 1, 20)
-		add_effect(at, 10 if type < 4 else 28, 0.22, 2)
+		add_effect(at, 14 if type < 4 or type == 6 else 30, 0.42, 2)
 
 func _drop_xp(at: Vector2, value: int) -> void:
 	var closest := -1

@@ -41,6 +41,13 @@ func _initialize() -> void:
 	sim.caches.append(sim.player)
 	sim._collect(0)
 	check(sim.evolved[0] and sim.caches.is_empty(), "Eligible cache must evolve exactly one weapon")
+	for bearing in 8:
+		var aiming := Battle.new(92)
+		aiming.god_mode = true
+		aiming.spawn_enemy(0, aiming.player + Vector2.from_angle(bearing * TAU / 8) * 45)
+		for frame in 120:
+			aiming.step(1.0 / 60.0, Vector2.ZERO)
+		check(aiming.kills > 0, "Hand-mounted gun must hit targets in all eight directions")
 	var health_sim := Battle.new(2)
 	health_sim.hurt_player(10)
 	health_sim.hurt_player(10)

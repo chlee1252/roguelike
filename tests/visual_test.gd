@@ -26,6 +26,12 @@ func _run() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/combat.png")
+	game.battle.aim = Vector2.RIGHT
+	game.battle.gun_clock = 0.20
+	game.battle.add_effect(game.battle.player + Vector2(46, -12), 14, 0.42, 2)
+	game.battle.effects[-1].life = 0.32
+	game.field.queue_redraw()
+	await _capture("firing-impact")
 	game.battle.pending_levels = 1
 	game._show_upgrades()
 	await process_frame
