@@ -126,6 +126,7 @@ func _build_hud() -> void:
 	_panel(hud, Rect2(12, 324, 616, 26), Color(0.06, 0.11, 0.14, 0.88), 9)
 	loadout = _label(hud, "", Vector2(24, 330), 9, GameSkin.MUTED)
 	wave_label = _label(hud, "", Vector2(150, 58), 13, Color("e6c69b"))
+	wave_label.add_theme_stylebox_override("normal", GameSkin.box(Color(0.06, 0.09, 0.15, 0.94), 8))
 	wave_label.size.x = 340
 	wave_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	health_bar = ProgressBar.new()
@@ -182,7 +183,8 @@ func _show_menu() -> void:
 		_button(overlay, "밤 산책 시작  →", Rect2(32, 269, 244, 44), start_run, true)
 	_label(overlay, "목표", Vector2(343, 294), 10, GameSkin.MUTED)
 	_label(overlay, "잘 먹고, 잘 피하고, 아침까지 돌아다녀요.", Vector2(373, 294), 9)
-	_label(overlay, "WASD / 방향키 · 터치 드래그로 이동     Esc 일시정지", Vector2(32, 334), 9, GameSkin.MUTED)
+	var hint := "화면을 누르고 끌어 이동 · 공격은 고양이가 알아서 해요" if OS.has_feature("mobile") else "WASD / 방향키 · 터치 드래그로 이동     Esc 일시정지"
+	_label(overlay, hint, Vector2(32, 334), 9, GameSkin.MUTED)
 
 func start_run() -> void:
 	_clear_save()

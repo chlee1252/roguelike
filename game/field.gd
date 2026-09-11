@@ -56,18 +56,21 @@ func _draw() -> void:
 				draw_rect(Rect2(at - Vector2(12, 7), Vector2(24, 15)), Color("413c42"))
 				draw_line(at + Vector2(-18, -14), at + Vector2(-12, -5), Color("dec39a"), 4)
 				draw_line(at + Vector2(18, -14), at + Vector2(12, -5), Color("dec39a"), 4)
-				_text("상자 · 멈추면 숨기", at + Vector2(-32, 24), 8, Color("b9b5b2"))
+				if battle.player.distance_to(object.at) < 80:
+					_text("상자 · 멈추면 숨기", at + Vector2(-32, 24), 8, Color("b9b5b2"))
 			1:
 				draw_circle(at, 24, Color(0.65, 0.84, 0.72, 0.08))
 				draw_style_box(GameSkin.box(Color("789b9e"), 4), Rect2(at - Vector2(10, 5), Vector2(20, 10)))
 				for n in 5:
 					draw_circle(at + Vector2(n * 3 - 6, -1), 2, Color("dbb28b"))
-				_text("누군가 놓은 밥", at + Vector2(-27, 22), 8, Color("a4cfbc"))
+				if battle.player.distance_to(object.at) < 80:
+					_text("누군가 놓은 밥", at + Vector2(-27, 22), 8, Color("a4cfbc"))
 			2:
 				draw_rect(Rect2(at - Vector2(26, 7), Vector2(52, 14)), Color("64717e"))
 				for x in range(-24, 25, 8):
 					draw_line(at + Vector2(x, -5), at + Vector2(x, 4), Color("8696a0"))
-				_text("낮은 담장 · 뛰어넘기", at + Vector2(-36, 24), 8, Color("b9b5b2"))
+				if battle.player.distance_to(object.at) < 80:
+					_text("낮은 담장 · 뛰어넘기", at + Vector2(-36, 24), 8, Color("b9b5b2"))
 	for fire in battle.fur_patches:
 		var at: Vector2 = fire.at + shift
 		if visible_rect.has_point(at):
@@ -122,7 +125,7 @@ func _draw() -> void:
 				draw_arc(at, 2, battle.elapsed * 12, battle.elapsed * 12 + PI, 8, Color("425f62"), 1)
 			else:
 				draw_circle(at, 5 if pool.aux[i] > 0 else 4, Color("2a243b"))
-				draw_circle(at, 3, Color("f397af"), pool.aux[i] <= 0, 1)
+				draw_circle(at, 3, Color("f397af"), pool.aux[i] <= 0, -1 if pool.aux[i] <= 0 else 1)
 				draw_circle(at, 1, Color("fff0dd"))
 	for effect in battle.effects:
 		var at: Vector2 = effect.at + shift
