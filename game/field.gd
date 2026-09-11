@@ -62,6 +62,12 @@ func _draw() -> void:
 		draw_rect(Rect2(at - Vector2(8, 6), Vector2(16, 12)), Color("d8ad58"))
 		draw_rect(Rect2(at - Vector2(5, 3), Vector2(10, 6)), Color("4d5036"))
 		draw_circle(at, 13 + sin(battle.elapsed * 4) * 2, Color("e9c675"), false, 1)
+	for fire in battle.fires:
+		var at: Vector2 = fire.at + shift
+		draw_circle(at, 18, Color(0.8, 0.35, 0.1, 0.22))
+		for n in 5:
+			var ember := at + Vector2.from_angle(n * 2.4) * (5 + n * 2)
+			draw_rect(Rect2(ember.round(), Vector2(3, 5)), Color("e5a657"))
 	for blast in battle.blasts:
 		var color := Color("7cc6ac") if blast.friendly else Color("f17662")
 		var at: Vector2 = blast.at + shift
@@ -115,6 +121,10 @@ func draw_ellipse_shadow(at: Vector2, radius: float) -> void:
 
 func _draw_enemy(id: int, at: Vector2) -> void:
 	var type := battle.enemies.kind[id]
+	if battle.enemies.mode[id] == 1:
+		draw_line(at, battle.enemies.target[id] + Vector2(320, 180) - battle.camera(), Color(0.95, 0.5, 0.4, 0.6), 2)
+	if battle.elite_ids.has(id):
+		draw_arc(at, Battle.ENEMY_RADIUS[type] + 5, 0, TAU, 24, Color("e0b95e"), 1)
 	draw_ellipse_shadow(at, 10 if type < 4 else 24)
 	if type < 4 or type == 6:
 		var scale_value := 24.0 if type == 6 else 18.0

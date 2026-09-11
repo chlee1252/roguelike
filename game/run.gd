@@ -25,13 +25,22 @@ var options: Array[String] = []
 var screen_buttons: Array[Button] = []
 var resume_timer := 0.0
 var controls_layer: Node2D
+var audio: CombatAudio
+var save_clock := 0.0
+var mirrored := false
+var reduced_effects := false
+var save_path := "user://deployment.dat"
 
 func _ready() -> void:
+	get_tree().auto_accept_quit = false
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	field = Battlefield.new()
 	add_child(field)
 	battle = Battle.new(42)
 	field.battle = battle
+	audio = CombatAudio.new()
+	add_child(audio)
+	_load_settings()
 	_build_hud()
 	controls_layer = Node2D.new()
 	controls_layer.z_index = 10
@@ -102,6 +111,8 @@ func _build_hud() -> void:
 	_style_bar(xp_bar, Color("6cbba7"))
 	xp_bar.show_percentage = false
 	hud.add_child(xp_bar)
+	health_bar.size = Vector2(140, 6)
+	xp_bar.size = Vector2(640, 3)
 	_button(hud, "II", Rect2(584, 4, 42, 31), pause_run)
 
 func _style_bar(bar: ProgressBar, color: Color) -> void:
@@ -123,6 +134,7 @@ func _clear_overlay() -> void:
 
 func _show_menu() -> void:
 	state = "menu"
+	audio.silence()
 	hud.visible = false
 	_clear_overlay()
 	_panel(overlay, Rect2(0, 0, 640, 360), Color(0.035, 0.075, 0.075, 0.94))
@@ -132,9 +144,13 @@ func _show_menu() -> void:
 	_label(overlay, "ONE SOLDIER. TEN MINUTES. NO BACKUP.", Vector2(54, 185), 10, Color("d5b36a"))
 	_label(overlay, "Move through the crossfire. Your weapons handle the rest.\nCollect dog tags. Upgrade your arsenal. Reach extraction.", Vector2(54, 218), 11, Color("aebaa9"))
 	_button(overlay, "DEPLOY  →", Rect2(54, 277, 210, 41), start_run)
-	_label(overlay, "WASD / ARROWS or drag to move\nESC to pause · touch joystick on mobile", Vector2(289, 280), 10, Color("8e9e92"))
+	if FileAccess.file_exists(save_path):
+		_button(overlay, "CONTINUE", Rect2(281, 277, 150, 41), _continue_run)
+	_button(overlay, "SETTINGS", Rect2(447, 277, 140, 41), _show_settings)
+	_label(overlay, "WASD / ARROWS or drag to move   ·   ESC to pause", Vector2(54, 331), 9, Color("8e9e92"))
 
 func start_run() -> void:
+	_clear_save()
 	battle = Battle.new()
 	field.battle = battle
 	state = "playing"
@@ -143,6 +159,7 @@ func start_run() -> void:
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reset_input()
 	last_minute = -1
+	save_clock = 0
 
 func _reset_input() -> void:
 	joystick_finger = -1
@@ -153,13 +170,17 @@ func pause_run() -> void:
 	if state != "playing":
 		return
 	state = "paused"
+	_save_session()
+	audio.silence()
 	_reset_input()
 	_clear_overlay()
 	_panel(overlay, Rect2(0, 0, 640, 360), Color(0.035, 0.075, 0.075, 0.92))
 	_label(overlay, "OPERATION PAUSED", Vector2(207, 91), 24)
 	_label(overlay, "Take a breath. The battlefield can wait.", Vector2(206, 133), 11, Color("b4bb9b"))
+	_label(overlay, "EVOLUTION: Weapon 6 + matching Support 2 + gold cache", Vector2(155, 155), 10, Color("d5b36a"))
 	_button(overlay, "RESUME", Rect2(215, 180, 210, 42), _resume)
-	_button(overlay, "RETURN TO BRIEFING", Rect2(215, 237, 210, 36), _show_menu)
+	_button(overlay, "SAVE & BRIEFING", Rect2(215, 237, 210, 36), _save_and_menu)
+	_button(overlay, "SETTINGS", Rect2(215, 286, 210, 32), _show_settings)
 
 func _resume() -> void:
 	_clear_overlay()
@@ -184,7 +205,7 @@ func _input(event: InputEvent) -> void:
 	if state != "playing":
 		return
 	if event is InputEventScreenTouch:
-		if event.pressed and joystick_finger < 0 and event.position.y > 60:
+		if event.pressed and joystick_finger < 0 and event.position.y > 70 and (event.position.x > 320 if mirrored else event.position.x < 320):
 			joystick_finger = event.index
 			joystick_origin = event.position
 			joystick_position = event.position
@@ -210,9 +231,14 @@ func _physics_process(dt: float) -> void:
 		resume_timer -= dt
 		if resume_timer <= 0:
 			state = "playing"
+			_reset_input()
 	if state == "playing":
 		var keyboard := Vector2(float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT)), float(Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN)) - float(Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP)))
 		battle.step(dt, keyboard if keyboard.length_squared() > 0 else movement)
+		save_clock += dt
+		if save_clock >= 10:
+			save_clock = 0
+			_save_session()
 		if battle.finished:
 			_show_results()
 		elif battle.pending_levels > 0:
@@ -240,20 +266,26 @@ func _update_hud(dt: float) -> void:
 		banner_time = 3
 	banner_time -= dt
 	wave_label.visible = banner_time > 0 and state == "playing"
+	if state == "playing":
+		for sound in battle.sound_events:
+			audio.play(sound)
 	battle.sound_events.clear()
 
 func _draw_controls() -> void:
+	if state == "resuming":
+		controls_layer.draw_string(ThemeDB.fallback_font, Vector2(278, 165), "READY", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color("e5bf72"))
 	if state == "playing" and (joystick_finger >= 0 or mouse_drag):
 		controls_layer.draw_circle(joystick_origin, 42, Color(0.7, 0.8, 0.7, 0.1))
 		controls_layer.draw_arc(joystick_origin, 42, 0, TAU, 40, Color(0.7, 0.8, 0.7, 0.4), 1)
 		controls_layer.draw_circle(joystick_origin + (joystick_position - joystick_origin).limit_length(40), 15, Color(0.8, 0.9, 0.75, 0.45))
-	if battle != null and battle.hit_flash > 0:
+	if battle != null and battle.hit_flash > 0 and not reduced_effects:
 		controls_layer.draw_rect(Rect2(0, 0, 640, 360), Color(0.9, 0.2, 0.1, battle.hit_flash * 0.4))
 
-func _show_upgrades() -> void:
+func _show_upgrades(keep_options: bool = false) -> void:
 	state = "upgrading"
 	_reset_input()
-	options = _roll_options()
+	if not keep_options:
+		options = _roll_options()
 	_clear_overlay()
 	_panel(overlay, Rect2(0, 0, 640, 360), Color(0.035, 0.075, 0.075, 0.96))
 	_label(overlay, "FIELD PROMOTION", Vector2(32, 27), 10, Color("d5b36a"))
@@ -283,6 +315,11 @@ func _roll_options() -> Array[String]:
 	if candidates.size() < 3:
 		candidates.append("supply")
 	var result: Array[String] = []
+	if battle.level > 3:
+		for i in 3:
+			if battle.weapons[i] > 0 and battle.weapons[i] < 6:
+				result.append("w" + str(i))
+				break
 	if battle.level <= 3:
 		for id in ["w1", "w2"]:
 			if battle.weapons[int(id[1])] == 0:
@@ -309,7 +346,7 @@ func _describe(id: String) -> Array[String]:
 	return [SUPPORT_NAMES[index], "LEVEL %d → %d\n%s\nEvolution needs W6 + S2." % [battle.supports[index], battle.supports[index] + 1, ["+10% projectile damage", "+10% flame range", "−10% artillery cooldown"][index]]]
 
 func _choose(id: String) -> void:
-	if state != "upgrading":
+	if state != "upgrading" or not options.has(id):
 		return
 	if id.begins_with("w"):
 		battle.weapons[int(id[1])] += 1
@@ -323,6 +360,7 @@ func _choose(id: String) -> void:
 			if battle.pickups.alive[i]:
 				battle.pickups.position[i] = battle.player
 	battle.pending_levels -= 1
+	audio.play("evolve")
 	if battle.pending_levels > 0:
 		_show_upgrades()
 	else:
@@ -334,6 +372,7 @@ func _reroll() -> void:
 		_show_upgrades()
 
 func _show_results() -> void:
+	_clear_save()
 	state = "results"
 	_reset_input()
 	_clear_overlay()
@@ -346,6 +385,95 @@ func _show_results() -> void:
 	_button(overlay, "BRIEFING", Rect2(305, 278, 180, 42), _show_menu)
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		audio.silence()
+		_save_session()
+		get_tree().quit()
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		if is_instance_valid(audio):
+			audio.silence()
 		if state == "playing":
 			pause_run()
+		elif state == "resuming":
+			state = "playing"
+			pause_run()
+		elif state == "upgrading":
+			_save_session()
+
+func _save_session() -> void:
+	if battle == null or battle.finished or state in ["menu", "results"]:
+		return
+	var file := FileAccess.open(save_path + ".tmp", FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_var({"battle": battle.snapshot(), "options": options if state == "upgrading" else []})
+	file.flush()
+	file.close()
+	DirAccess.rename_absolute(save_path + ".tmp", save_path)
+
+func _clear_save() -> void:
+	if FileAccess.file_exists(save_path):
+		DirAccess.remove_absolute(save_path)
+
+func _save_and_menu() -> void:
+	_save_session()
+	_show_menu()
+
+func _continue_run() -> void:
+	var file := FileAccess.open(save_path, FileAccess.READ)
+	if file == null:
+		return
+	var data: Variant = file.get_var(false)
+	file.close()
+	if not data is Dictionary or not data.get("battle") is Dictionary:
+		return
+	var restored := Battle.new(1)
+	if not restored.restore(data.battle):
+		return
+	battle = restored
+	field.battle = battle
+	hud.visible = true
+	last_minute = -1
+	if battle.pending_levels > 0:
+		options.assign(data.get("options", []))
+		_show_upgrades(not options.is_empty())
+	else:
+		state = "playing"
+		pause_run()
+
+func _load_settings() -> void:
+	var config := ConfigFile.new()
+	if config.load("user://settings.cfg") == OK:
+		audio.enabled = config.get_value("accessibility", "sound", true)
+		mirrored = config.get_value("accessibility", "mirrored", false)
+		reduced_effects = config.get_value("accessibility", "reduced_effects", false)
+
+func _save_settings() -> void:
+	var config := ConfigFile.new()
+	config.set_value("accessibility", "sound", audio.enabled)
+	config.set_value("accessibility", "mirrored", mirrored)
+	config.set_value("accessibility", "reduced_effects", reduced_effects)
+	config.save("user://settings.cfg")
+
+func _show_settings() -> void:
+	var return_to_menu := state == "menu"
+	_reset_input()
+	_clear_overlay()
+	_panel(overlay, Rect2(0, 0, 640, 360), Color(0.035, 0.075, 0.075, 0.98))
+	_label(overlay, "FIELD SETTINGS", Vector2(195, 47), 27)
+	_button(overlay, "SOUND: " + ("ON" if audio.enabled else "OFF"), Rect2(180, 110, 280, 40), _toggle_setting.bind("sound"))
+	_button(overlay, "JOYSTICK: " + ("RIGHT" if mirrored else "LEFT"), Rect2(180, 163, 280, 40), _toggle_setting.bind("mirrored"))
+	_button(overlay, "HIT FLASH: " + ("OFF" if reduced_effects else "ON"), Rect2(180, 216, 280, 40), _toggle_setting.bind("effects"))
+	_button(overlay, "BACK", Rect2(180, 282, 280, 40), _show_menu if return_to_menu else _return_pause)
+
+func _return_pause() -> void:
+	state = "playing"
+	pause_run()
+
+func _toggle_setting(key: String) -> void:
+	match key:
+		"sound": audio.enabled = not audio.enabled
+		"mirrored": mirrored = not mirrored
+		"effects": reduced_effects = not reduced_effects
+	_save_settings()
+	_show_settings()

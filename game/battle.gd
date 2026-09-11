@@ -42,6 +42,11 @@ var sound_events: Array[String] = []
 var god_mode := false
 var fired_events: Dictionary = {}
 var rerolls := 1
+var shot_hits: Dictionary = {}
+var elite_ids: Dictionary = {}
+var fires: Array[Dictionary] = []
+var volley_clock := 0.0
+var fire_clock := 0.0
 var flame_direction := Vector2.RIGHT
 var flame_active := false
 var damage_dealt: Array[float] = [0.0, 0.0, 0.0]
@@ -53,7 +58,7 @@ func _init(seed_value: int = 0) -> void:
 		rng.seed = seed_value
 
 func xp_needed() -> int:
-	return 8 + 3 * (level - 1)
+	return 8 + 18 * (level - 1)
 
 func minute() -> int:
 	return mini(9, int(elapsed / 60.0))
@@ -74,12 +79,14 @@ func step(dt: float, movement: Vector2) -> void:
 	player = (player + movement.limit_length() * 100.0 * dt).clamp(Vector2(20, 20), WORLD - Vector2(20, 20))
 	if movement.length_squared() > 0.01:
 		aim = movement.normalized()
+	volley_clock = maxf(0, volley_clock - dt)
 	_spawn(dt)
 	_move_enemies(dt)
 	_rebuild_grid()
 	_weapons(dt)
 	_projectiles(dt)
 	_explosions(dt)
+	_tick_fires(dt)
 	_collect(dt)
 	for i in range(effects.size() - 1, -1, -1):
 		effects[i].life -= dt
@@ -104,17 +111,28 @@ func _spawn(dt: float) -> void:
 				type = 3
 			if elapsed > 300 and roll > 0.955 and roll <= 0.98:
 				type = 4 if rng.randf() < 0.55 else 5
-			spawn_enemy(type, _spawn_position())
-	for event in [[150, 6], [195, 4], [220, 3], [260, 6], [310, 5], [390, 6], [460, 6], [520, 6], [540, 7]]:
+			if type < 3 or _type_count(type) < ([0, 0, 0, 4, 3, 2][type]):
+				spawn_enemy(type, _spawn_position())
+	for event in [[150, 6], [195, 4], [220, 3], [260, 4], [310, 5], [390, 5], [460, 6], [520, 4], [540, 7]]:
 		if elapsed >= event[0] and not fired_events.has(event[0]):
 			if enemies.count >= enemies.capacity:
 				for i in enemies.capacity:
 					if enemies.alive[i] and enemies.kind[i] == 0:
 						enemies.release(i)
 						break
-			spawn_enemy(event[1], _spawn_position())
+			var spawned := spawn_enemy(event[1], _spawn_position())
+			if event[0] in [150, 260, 390, 460, 520] and spawned >= 0:
+				elite_ids[spawned] = enemies.generation[spawned]
+				enemies.health[spawned] *= 1.8
 			fired_events[event[0]] = true
 			events.append("COMMAND TANK INBOUND" if event[1] == 7 else "ELITE CONTACT" if event[1] == 6 else "REINFORCEMENTS")
+
+func _type_count(type: int) -> int:
+	var count := 0
+	for i in enemies.capacity:
+		if enemies.alive[i] and enemies.kind[i] == type:
+			count += 1
+	return count
 
 func _spawn_position() -> Vector2:
 	var center := camera()
@@ -149,6 +167,11 @@ func _move_enemies(dt: float) -> void:
 		if enemies.aux[i] > 0:
 			enemies.aux[i] -= dt
 			speed *= 0.85 if type != 7 else 0.95
+		if type == 2 and enemies.mode[i] == 1:
+			speed = 0
+		elif type == 2 and enemies.mode[i] == 2:
+			direction = enemies.velocity[i]
+			speed = 175
 		enemies.position[i] += direction * speed * dt
 		if enemies.burn[i] > 0:
 			enemies.burn[i] -= dt
@@ -156,20 +179,41 @@ func _move_enemies(dt: float) -> void:
 			if not enemies.alive[i]:
 				continue
 		enemies.timer[i] -= dt
-		if enemies.timer[i] <= 0 and distance < 330:
+		if type == 2 and enemies.mode[i] > 0 and enemies.timer[i] <= 0:
+			if enemies.mode[i] == 1:
+				enemies.mode[i] = 2
+				enemies.velocity[i] = enemies.position[i].direction_to(enemies.target[i])
+				enemies.timer[i] = 0.5
+			else:
+				enemies.mode[i] = 0
+				enemies.timer[i] = 3.8
+		elif enemies.timer[i] <= 0 and distance < 300 and (type == 0 or volley_clock <= 0) and Rect2(camera() - Vector2(300, 120), Vector2(600, 265)).has_point(enemies.position[i]):
 			_enemy_attack(i, type, direction)
 		if distance < ENEMY_RADIUS[type] + 6:
 			hurt_player(20 if type >= 4 else 10)
-		if distance > 650 and type < 6:
+		if distance > 650 and type < 6 and not elite_ids.has(i):
 			enemies.release(i)
 
 func _enemy_attack(id: int, type: int, direction: Vector2) -> void:
 	enemies.timer[id] = 3.8 if type < 4 else 4.5
 	if type == 0:
 		return
+	volley_clock = 0.22 if type < 4 else 0.5
 	if type == 2:
-		# Position-locked charge marker, resolved after its warning.
-		_add_blast(player, 18, 10, 0.8, false, 0)
+		enemies.mode[id] = 1
+		enemies.target[id] = player
+		enemies.timer[id] = 0.65
+		return
+	if type == 5:
+		if hostile.free.size() < 10:
+			return
+		var center := player + Vector2(0, -145 if enemies.position[id].y < player.y else 145)
+		var travel := Vector2.DOWN if center.y < player.y else Vector2.UP
+		for n in range(-6, 7):
+			if absi(n) <= 1:
+				continue
+			var bullet := hostile.spawn(center + Vector2(n * 22, 0), 5, 12, travel * 65, 6)
+			hostile.aux[bullet] = 1.1
 		return
 	if type == 3:
 		_add_blast(player, 28, 20, 1.2, false, 0)
@@ -218,6 +262,21 @@ func nearest(at: Vector2, radius: float) -> int:
 			best = id
 	return best
 
+func dense_target(radius: float) -> int:
+	var best := -1
+	var score := -1
+	for cell in grid:
+		var center := Vector2(cell) * 64 + Vector2(32, 32)
+		if center.distance_to(player) > radius:
+			continue
+		if grid[cell].size() > score:
+			for id in grid[cell]:
+				if enemies.alive[id] and enemies.position[id].distance_to(player) <= radius:
+					score = grid[cell].size()
+					best = id
+					break
+	return best
+
 func _weapons(dt: float) -> void:
 	gun_clock -= dt
 	if gun_clock <= 0:
@@ -230,6 +289,7 @@ func _weapons(dt: float) -> void:
 				var bullet := shots.spawn(player + direction.orthogonal() * (n * 5 - 2), 0,
 					(17 if weapons[0] >= 5 else 13 if weapons[0] >= 2 else 10) * (1 + supports[0] * 0.1), direction * 440, 0.7)
 				if bullet >= 0:
+					shot_hits[bullet] = []
 					shots.aux[bullet] = 3 if evolved[0] else 2 if weapons[0] >= 4 else 1
 			gun_clock = 0.12 if evolved[0] else 0.16 if weapons[0] >= 6 else 0.20 if weapons[0] >= 3 else 0.25
 			_sound("gun")
@@ -238,7 +298,7 @@ func _weapons(dt: float) -> void:
 	if flame_active and flame_clock <= 0:
 		flame_clock = 0.2
 		var reach := (90.0 if weapons[1] >= 3 else 70.0) * (1.0 + supports[1] * 0.1)
-		var target := nearest(player, reach)
+		var target := dense_target(reach)
 		if target >= 0:
 			flame_direction = player.direction_to(enemies.position[target])
 		else:
@@ -251,7 +311,7 @@ func _weapons(dt: float) -> void:
 				_hurt_enemy(id, 9 if weapons[1] >= 6 else 7 if weapons[1] >= 2 else 5, 1)
 	artillery_clock -= dt
 	if weapons[2] > 0 and artillery_clock <= 0:
-		var target := nearest(player, 300)
+		var target := dense_target(300)
 		if target >= 0:
 			var count := 5 if evolved[2] else 2 if weapons[2] >= 4 else 1
 			var center := enemies.position[target]
@@ -284,12 +344,14 @@ func _projectiles(dt: float) -> void:
 				for id in nearby(pool.position[i], 40):
 					if not enemies.alive[id]:
 						continue
-					# A bullet can hit an enemy once; track the last contact until it exits.
-					if pool.kind[i] == id + 1:
+					var identity := Vector2i(id, enemies.generation[id])
+					if shot_hits.get(i, []).has(identity):
 						continue
 					var closest := Geometry2D.get_closest_point_to_segment(enemies.position[id], before, pool.position[i])
 					if closest.distance_to(enemies.position[id]) <= ENEMY_RADIUS[enemies.kind[id]] + 2:
-						pool.kind[i] = id + 1
+						if not shot_hits.has(i):
+							shot_hits[i] = []
+						shot_hits[i].append(identity)
 						if evolved[0]:
 							enemies.aux[id] = 1.0
 						_hurt_enemy(id, pool.health[i], 0)
@@ -327,7 +389,7 @@ func _explosions(dt: float) -> void:
 		_sound("blast")
 		blasts.remove_at(i)
 
-func _hurt_enemy(id: int, amount: float, weapon: int) -> void:
+func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -> void:
 	if not enemies.alive[id]:
 		return
 	var bonus := 0.0
@@ -345,11 +407,14 @@ func _hurt_enemy(id: int, amount: float, weapon: int) -> void:
 	if enemies.health[id] <= 0:
 		var type := enemies.kind[id]
 		var at := enemies.position[id]
+		if evolved[1] and enemies.burn[id] > 0 and can_spread and fires.size() < 64:
+			fires.append({"at": at, "life": 3.0})
 		enemies.release(id)
 		kills += 1
 		_drop_xp(at, 30 if type >= 6 else 8 if type >= 4 else 2 if type > 0 else 1)
-		if type == 6:
+		if type == 6 or elite_ids.get(id, -1) == enemies.generation[id]:
 			caches.append(at)
+			elite_ids.erase(id)
 		if type == 7:
 			for bullet in hostile.capacity:
 				hostile.release(bullet)
@@ -359,13 +424,34 @@ func _hurt_enemy(id: int, amount: float, weapon: int) -> void:
 		add_effect(at, 10 if type < 4 else 28, 0.22, 2)
 
 func _drop_xp(at: Vector2, value: int) -> void:
-	if pickups.free.is_empty():
-		for i in pickups.capacity:
-			if pickups.kind[i] == 0:
-				pickups.health[i] += value
-				return
+	var closest := -1
+	var distance := INF
+	for i in pickups.capacity:
+		if pickups.alive[i] and pickups.kind[i] == 0:
+			var d := pickups.position[i].distance_squared_to(at)
+			if d < distance:
+				distance = d
+				closest = i
+	if closest >= 0 and (distance < 144 or pickups.free.is_empty()):
+		pickups.health[closest] += value
 	else:
 		pickups.spawn(at, 0, value)
+
+func _tick_fires(dt: float) -> void:
+	for i in range(fires.size() - 1, -1, -1):
+		fires[i].life -= dt
+		if fires[i].life <= 0:
+			fires.remove_at(i)
+	fire_clock -= dt
+	if fire_clock > 0 or fires.is_empty():
+		return
+	fire_clock = 0.2
+	var damaged: Dictionary = {}
+	for fire in fires:
+		for id in nearby(fire.at, 22):
+			if enemies.alive[id] and not damaged.has(id) and enemies.position[id].distance_to(fire.at) < 22:
+				damaged[id] = true
+				_hurt_enemy(id, 1.6, 1, false)
 
 func _collect(dt: float) -> void:
 	for i in pickups.capacity:
@@ -391,7 +477,7 @@ func _collect(dt: float) -> void:
 			if not eligible.is_empty():
 				evolved[eligible[0]] = true
 				caches.remove_at(i)
-				events.append("WEAPON EVOLVED")
+				events.append(["CERBERUS ONLINE", "INFERNO ONLINE", "ROLLING THUNDER ONLINE"][eligible[0]])
 				_sound("evolve")
 
 func eligible_evolutions() -> Array[int]:
@@ -417,3 +503,72 @@ func add_effect(at: Vector2, radius: float, life: float, type: int) -> void:
 func _sound(name: String) -> void:
 	if sound_events.size() < 12 and not sound_events.has(name):
 		sound_events.append(name)
+
+func snapshot() -> Dictionary:
+	return {"version": 1, "enemies": enemies.snapshot(), "shots": shots.snapshot(),
+		"hostile": hostile.snapshot(), "pickups": pickups.snapshot(), "player": player,
+		"aim": aim, "hp": hp, "elapsed": elapsed, "kills": kills, "level": level,
+		"xp": xp, "pending_levels": pending_levels, "invulnerable": invulnerable,
+		"weapons": weapons, "supports": supports, "evolved": evolved, "blasts": blasts,
+		"caches": caches, "fired_events": fired_events, "rerolls": rerolls,
+		"spawn_clock": spawn_clock, "gun_clock": gun_clock, "flame_clock": flame_clock,
+		"artillery_clock": artillery_clock, "volley_clock": volley_clock,
+		"fire_clock": fire_clock, "fires": fires, "elite_ids": elite_ids, "shot_hits": shot_hits,
+		"flame_direction": flame_direction, "damage_dealt": damage_dealt,
+		"seed": rng.seed, "rng_state": rng.state}
+
+func restore(data: Dictionary) -> bool:
+	if data.get("version", 0) != 1:
+		return false
+	var schema := snapshot()
+	for key in schema.keys():
+		if not data.has(key) or typeof(data[key]) != typeof(schema[key]):
+			return false
+	for key in ["enemies", "shots", "hostile", "pickups"]:
+		var pool: EntityPool = get(key)
+		var pool_data: Dictionary = data[key]
+		var pool_schema := pool.snapshot()
+		for key_name in pool_schema:
+			if not pool_data.has(key_name) or typeof(pool_data[key_name]) != typeof(pool_schema[key_name]):
+				return false
+		for buffer in ["alive", "position", "velocity", "health", "kind", "timer", "aux", "burn", "generation", "mode", "target"]:
+			if not pool_data.has(buffer) or pool_data[buffer].size() != pool.capacity:
+				return false
+		if not pool_data.has("free") or not pool_data.has("count"):
+			return false
+		var active := 0
+		var free_slots: Dictionary = {}
+		for slot in pool_data.free:
+			if not slot is int or slot < 0 or slot >= pool.capacity or free_slots.has(slot) or pool_data.alive[slot] != 0:
+				return false
+			free_slots[slot] = true
+		for slot in pool.capacity:
+			if pool_data.alive[slot]:
+				active += 1
+		if active != pool_data.count or active + free_slots.size() != pool.capacity:
+			return false
+	for key in ["weapons", "supports", "evolved", "damage_dealt"]:
+		if data[key].size() != 3:
+			return false
+	for i in 3:
+		if data.weapons[i] < 0 or data.weapons[i] > 6 or data.supports[i] < 0 or data.supports[i] > 2:
+			return false
+	if data.weapons[0] < 1 or data.level < 1 or data.pending_levels < 0:
+		return false
+	if data.elapsed < 0 or data.elapsed >= 600 or data.hp <= 0 or data.hp > 100:
+		return false
+	for key in ["enemies", "shots", "hostile", "pickups"]:
+		get(key).restore(data[key])
+	for key in ["player", "aim", "hp", "elapsed", "kills", "level", "xp", "pending_levels", "invulnerable", "fired_events", "rerolls", "spawn_clock", "gun_clock", "flame_clock", "artillery_clock", "volley_clock", "fire_clock", "elite_ids", "shot_hits", "flame_direction"]:
+		set(key, data[key])
+	weapons.assign(data.weapons)
+	supports.assign(data.supports)
+	evolved.assign(data.evolved)
+	blasts.assign(data.blasts)
+	caches.assign(data.caches)
+	fires.assign(data.fires)
+	damage_dealt.assign(data.damage_dealt)
+	rng.seed = data.seed
+	rng.state = data.rng_state
+	_rebuild_grid()
+	return true

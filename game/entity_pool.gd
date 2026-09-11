@@ -11,14 +11,13 @@ var timer := PackedFloat32Array()
 var aux := PackedFloat32Array()
 var burn := PackedFloat32Array()
 var generation := PackedInt32Array()
+var mode := PackedInt32Array()
+var target := PackedVector2Array()
 var free: Array[int] = []
 var count := 0
 
 func _init(size: int = 500) -> void:
 	capacity = size
-	for buffer in [alive, position, velocity, health, kind, timer, aux, burn, generation]:
-		buffer.resize(size)
-	# Packed arrays use copy-on-write; explicitly size member buffers.
 	alive.resize(size)
 	position.resize(size)
 	velocity.resize(size)
@@ -28,6 +27,8 @@ func _init(size: int = 500) -> void:
 	aux.resize(size)
 	burn.resize(size)
 	generation.resize(size)
+	mode.resize(size)
+	target.resize(size)
 	for i in range(size - 1, -1, -1):
 		free.append(i)
 
@@ -43,6 +44,8 @@ func spawn(at: Vector2, type: int, hp: float, motion := Vector2.ZERO, life := 0.
 	timer[id] = life
 	aux[id] = 0.0
 	burn[id] = 0.0
+	mode[id] = 0
+	target[id] = Vector2.ZERO
 	generation[id] += 1
 	count += 1
 	return id
@@ -57,7 +60,7 @@ func release(id: int) -> void:
 func snapshot() -> Dictionary:
 	return {"alive": alive, "position": position, "velocity": velocity,
 		"health": health, "kind": kind, "timer": timer, "aux": aux,
-		"burn": burn, "generation": generation, "free": free, "count": count}
+		"burn": burn, "generation": generation, "mode": mode, "target": target, "free": free, "count": count}
 
 func restore(data: Dictionary) -> void:
 	alive = data.alive
@@ -69,5 +72,7 @@ func restore(data: Dictionary) -> void:
 	aux = data.aux
 	burn = data.burn
 	generation = data.generation
+	mode = data.mode
+	target = data.target
 	free.assign(data.free)
 	count = data.count
