@@ -1,7 +1,13 @@
 # Last Commando
 
-Godot 4 environment baseline for a 2D mobile survival game. This commit contains
-only project setup and environment checks; gameplay is not implemented yet.
+A playable 2D military survival alpha for Godot 4. Survive ten minutes with automatic
+weapons, pixel-art infantry and vehicles, weapon evolutions, and touch movement.
+
+Run `godot --path .`, then select **Deploy**. Use WASD/arrows, mouse drag, or the
+floating touch joystick. Escape pauses. Settings include sound, joystick side, and
+hit flashes. **Continue** restores your saved deployment.
+
+See [gameplay and architecture](docs/gameplay.md) and [validation results](docs/game-validation.md).
 
 ## Toolchain
 
@@ -22,6 +28,7 @@ if Homebrew has moved ahead. Do not upgrade the engine without retesting exports
 godot --editor --path .
 bash scripts/check-environment.sh
 bash scripts/check-environment.sh --render
+bash scripts/test-game.sh --render
 ```
 
 The second command checks the pinned version, imports the project, loads the
@@ -66,3 +73,28 @@ no signing identity or credentials are stored here. See the
 
 See [environment validation](docs/environment-validation.md) for checks performed
 on the development laptop.
+
+The game test suite covers combat, touch ownership, upgrades, pause/resume, save
+round-trips, a complete seeded ten-minute mission, and a maximum-capacity stress
+scenario. Rendering tests save menu/combat/upgrade screenshots under `build/`.
+
+## iOS simulator workaround on this laptop
+
+The installed 4.7.2 templates contain an x86_64-only simulator archive despite
+advertising ARM64. Use the installed iOS 18.4 runtime booted in x86_64 mode for
+local testing; normal ARM64 simulator linking currently fails.
+
+```sh
+mkdir -p build/ios
+godot --headless --path . --export-debug 'iOS Simulator' build/ios/LastCommando.zip
+xcodebuild -project build/ios/LastCommando.xcodeproj -scheme LastCommando \
+  -configuration Debug -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath build/ios-x86-derived ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+The export writes an Xcode project directory; the `.zip` output name is the Godot
+export target name. The preset's team ID is a simulator-only placeholder, not a
+configured signing account. Detailed platform results and limits are in
+[game validation](docs/game-validation.md).

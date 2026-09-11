@@ -39,6 +39,12 @@ func _run() -> void:
 	second.pressed = true
 	game._input(second)
 	check(game.joystick_finger == 3, "Second finger must not steal joystick")
+	var emulated := InputEventMouseButton.new()
+	emulated.device = -1
+	emulated.button_index = MOUSE_BUTTON_LEFT
+	emulated.pressed = false
+	game._input(emulated)
+	check(game.movement == Vector2.RIGHT, "Emulated mouse release must not reset touch movement")
 	var before: Vector2 = game.battle.player
 	game._physics_process(0.1)
 	check(game.battle.player.x > before.x, "Joystick must move commando")

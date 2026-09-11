@@ -59,6 +59,12 @@ func _draw() -> void:
 			draw_line(at - Vector2(0, 2), at + Vector2(0, 2), Color("a25048"), 2)
 	for cache in battle.caches:
 		var at: Vector2 = cache + shift
+		if not Rect2(12, 55, 616, 265).has_point(at):
+			var marker := at.clamp(Vector2(14, 57), Vector2(626, 318))
+			var direction := (at - Vector2(320, 180)).normalized()
+			draw_line(marker - direction * 6, marker + direction * 6, Color("e9c675"), 2)
+			draw_circle(marker, 4, Color("e9c675"), false, 1)
+			continue
 		draw_rect(Rect2(at - Vector2(8, 6), Vector2(16, 12)), Color("d8ad58"))
 		draw_rect(Rect2(at - Vector2(5, 3), Vector2(10, 6)), Color("4d5036"))
 		draw_circle(at, 13 + sin(battle.elapsed * 4) * 2, Color("e9c675"), false, 1)

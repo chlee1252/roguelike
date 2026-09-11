@@ -9,6 +9,7 @@ if [[ "$actual_version" != "$expected_version".* ]]; then
   exit 1
 fi
 mkdir -p build
+touch build/.gdignore
 "$godot_bin" --headless --path . --editor --import > build/import.log 2>&1
 "$godot_bin" --headless --path . --quit-after 300 --script tests/environment_smoke.gd > build/smoke.log 2>&1
 grep -q ENVIRONMENT_SMOKE_OK build/smoke.log

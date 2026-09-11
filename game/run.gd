@@ -190,6 +190,9 @@ func _resume() -> void:
 	_reset_input()
 
 func _input(event: InputEvent) -> void:
+	# Controls still receive emulated mouse events; movement uses the owning touch only.
+	if event is InputEventMouse and event.device == -1:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_ESCAPE:
 			if state == "playing":
@@ -255,7 +258,7 @@ func _update_hud(dt: float) -> void:
 	var parts: Array[String] = []
 	for i in 3:
 		if battle.weapons[i] > 0:
-			parts.append((EVOLUTION_NAMES[i] + " ★") if battle.evolved[i] else ["HMG", "FLAME", "RADIO"][i] + " " + str(battle.weapons[i]) + "/6")
+			parts.append((EVOLUTION_NAMES[i] + " ★") if battle.evolved[i] else ["HMG", "FLAME", "RADIO"][i] + " " + str(battle.weapons[i]) + "/6" + " S" + str(battle.supports[i]))
 	loadout.text = "   /   ".join(parts) + "      ·      EXTRACT AT 10:00"
 	if battle.minute() != last_minute and state == "playing":
 		last_minute = battle.minute()
@@ -264,6 +267,11 @@ func _update_hud(dt: float) -> void:
 	if not battle.events.is_empty():
 		wave_label.text = battle.events.pop_front()
 		banner_time = 3
+	if battle.eligible_evolutions().is_empty():
+		for cache in battle.caches:
+			if cache.distance_to(battle.player) < 35:
+				wave_label.text = "CACHE: WEAPON 6 + SUPPORT 2"
+				banner_time = 0.2
 	banner_time -= dt
 	wave_label.visible = banner_time > 0 and state == "playing"
 	if state == "playing":

@@ -7,6 +7,8 @@ var voices: Array[AudioStreamPlayer] = []
 var next_voice := 0
 
 func _ready() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
 	for i in 8:
 		var voice := AudioStreamPlayer.new()
 		voice.volume_db = -20

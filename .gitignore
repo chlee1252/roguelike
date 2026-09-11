@@ -1,6 +1,7 @@
 .godot/
 .DS_Store
-build/
+/build/*
+!/build/.gdignore
 *.keystore
 *.jks
 export_credentials.cfg
