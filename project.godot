@@ -2,7 +2,7 @@
 config_version=5
 
 [application]
-config/name="Last Commando"
+config/name="골목의 밤냥"
 config/icon="res://app/icon.svg"
 run/main_scene="res://app/game.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")

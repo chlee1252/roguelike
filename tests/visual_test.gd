@@ -27,7 +27,7 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/combat.png")
 	game.battle.aim = Vector2.RIGHT
-	game.battle.gun_clock = 0.20
+	game.battle.paw_clock = 0.45
 	game.battle.add_effect(game.battle.player + Vector2(46, -12), 14, 0.42, 2)
 	game.battle.effects[-1].life = 0.32
 	game.field.queue_redraw()

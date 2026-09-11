@@ -15,7 +15,7 @@ func _run() -> void:
 	var times := PackedFloat64Array()
 	var max_enemies := 0
 	var max_hostile := 0
-	for frame in 36001:
+	for frame in 54001:
 		# A collection-focused bot follows nearby XP and otherwise circles.
 		var target := sim.player + Vector2.from_angle(sim.elapsed * 0.3) * 100
 		var best := 160.0 * 160.0
@@ -51,7 +51,7 @@ func _run() -> void:
 		if sim.finished:
 			break
 	check(sim.finished and sim.victory, "Full simulated mission must reach extraction")
-	check(sim.fired_events.has(540), "Final boss event must occur")
+	check(sim.fired_events.has(840), "Final boss event must occur")
 	check(sim.level >= 15, "XP economy must provide substantial upgrades")
 	check(sim.evolved.has(true), "Normal XP and cache progression must allow an evolution")
 	check(max_enemies <= 500 and max_hostile <= 600, "Entity caps must hold across the entire run")
@@ -62,7 +62,7 @@ func _run() -> void:
 	quit(1 if failures else 0)
 
 func _upgrade(sim: Battle) -> void:
-	# Acquire each weapon, focus the machine gun evolution, then others.
+	# Acquire each weapon, focus the paw swipe evolution, then others.
 	var applied := false
 	for i in [1, 2]:
 		if sim.weapons[i] == 0:

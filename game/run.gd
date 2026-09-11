@@ -1,8 +1,8 @@
 extends Control
 
-const WEAPON_NAMES := ["중기관총", "전술 화염방사기", "포격 지원 무전기"]
-const SUPPORT_NAMES := ["탄약 벨트", "고압 연료통", "신호 증폭기"]
-const EVOLUTION_NAMES := ["케르베로스", "인페르노", "롤링 썬더"]
+const WEAPON_NAMES := ["앞발 할퀴기", "털뭉치 발자국", "페트병 뚜껑"]
+const SUPPORT_NAMES := ["스크래처 기억", "두꺼운 겨울털", "깨끗한 발바닥"]
+const EVOLUTION_NAMES := ["우다다 냥펀치", "온 골목이 내 털", "골목 핀볼"]
 var battle: Battle
 var field: Battlefield
 var hud: Control
@@ -30,7 +30,7 @@ var save_clock := 0.0
 var mirrored := false
 var reduced_effects := false
 var health_text: Label
-var save_path := "user://deployment.dat"
+var save_path := "user://night-walk.dat"
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
@@ -120,7 +120,7 @@ func _build_hud() -> void:
 	add_child(hud)
 	_panel(hud, Rect2(12, 10, 155, 39), Color(0.06, 0.11, 0.14, 0.92), 12)
 	_panel(hud, Rect2(235, 10, 300, 36), Color(0.06, 0.11, 0.14, 0.92), 12)
-	title = _label(hud, "생존자 01", Vector2(24, 15), 10, GameSkin.MUTED)
+	title = _label(hud, "동네 고양이", Vector2(24, 15), 10, GameSkin.MUTED)
 	health_text = _label(hud, "100", Vector2(135, 15), 10, GameSkin.MINT)
 	stats = _label(hud, "", Vector2(251, 19), 12)
 	_panel(hud, Rect2(12, 324, 616, 26), Color(0.06, 0.11, 0.14, 0.88), 9)
@@ -162,26 +162,26 @@ func _show_menu() -> void:
 	hud.visible = false
 	_clear_overlay()
 	_panel(overlay, Rect2(0, 0, 640, 360), GameSkin.BASE, 0)
-	_label(overlay, "라스트 코만도", Vector2(32, 23), 16)
+	_label(overlay, "골목의 밤냥", Vector2(32, 23), 16)
 	_button(overlay, "설정", Rect2(548, 20, 60, 32), _show_settings)
-	_chip(overlay, "10분 생존  ·  자동 전투", Rect2(32, 67, 144, 24))
-	_label(overlay, "끝까지,\n살아남아라.", Vector2(30, 101), 37)
-	_label(overlay, "포위된 전선, 남은 건 당신뿐.\n공격은 맡기고, 살아남을 길을 찾으세요.", Vector2(32, 204), 12, GameSkin.MUTED)
+	_chip(overlay, "15분 밤 산책  ·  자동 전투", Rect2(32, 67, 144, 24))
+	_label(overlay, "귀신이 보여도,\n나는 고양이.", Vector2(30, 106), 29)
+	_label(overlay, "따뜻한 밥 냄새를 따라 걷다가\n오늘도 이상한 밤을 만나버렸다.", Vector2(32, 204), 12, GameSkin.MUTED)
 	var art := MissionArt.new()
 	art.position = Vector2(340, 72)
-	art.commando = field.sprites[0]
+	art.cat_texture = field.sprites[0]
 	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	overlay.add_child(art)
-	_label(overlay, "작전 01", Vector2(358, 84), 10, GameSkin.MINT)
-	_label(overlay, "고립된 전선", Vector2(358, 101), 15)
-	_chip(overlay, "적 보병 · 전차 · 공격 헬기", Rect2(363, 249, 220, 22), Color("d9c7a3"))
+	_label(overlay, "첫 번째 밤", Vector2(358, 84), 10, GameSkin.MINT)
+	_label(overlay, "해솔빌라 골목", Vector2(358, 101), 15)
+	_chip(overlay, "가로등 불빛 · 낯선 기척 · 밥 냄새", Rect2(363, 249, 220, 22), Color("d9c7a3"))
 	if FileAccess.file_exists(save_path):
 		_button(overlay, "이어하기  →", Rect2(32, 269, 158, 44), _continue_run, true)
-		_button(overlay, "새 작전", Rect2(200, 269, 108, 44), start_run)
+		_button(overlay, "새 산책", Rect2(200, 269, 108, 44), start_run)
 	else:
-		_button(overlay, "작전 시작  →", Rect2(32, 269, 244, 44), start_run, true)
+		_button(overlay, "밤 산책 시작  →", Rect2(32, 269, 244, 44), start_run, true)
 	_label(overlay, "목표", Vector2(343, 294), 10, GameSkin.MUTED)
-	_label(overlay, "무기를 진화시키고, 10분 뒤 탈출하세요.", Vector2(373, 294), 10)
+	_label(overlay, "잘 먹고, 잘 피하고, 아침까지 돌아다녀요.", Vector2(373, 294), 9)
 	_label(overlay, "WASD / 방향키 · 터치 드래그로 이동     Esc 일시정지", Vector2(32, 334), 9, GameSkin.MUTED)
 
 func start_run() -> void:
@@ -212,8 +212,8 @@ func pause_run() -> void:
 	_backdrop()
 	_panel(overlay, Rect2(158, 27, 324, 306), GameSkin.SURFACE, 20)
 	_chip(overlay, "잠시 쉬어가세요", Rect2(261, 46, 117, 23))
-	_label(overlay, "작전 일시정지", Vector2(216, 80), 27)
-	_label(overlay, "준비가 되면 전선으로 돌아가세요.", Vector2(224, 122), 11, GameSkin.MUTED)
+	_label(overlay, "잠깐 웅크리기", Vector2(216, 80), 27)
+	_label(overlay, "골목은 기다려 줄 거예요.", Vector2(224, 122), 11, GameSkin.MUTED)
 	_button(overlay, "계속하기", Rect2(182, 161, 276, 42), _resume, true)
 	_button(overlay, "저장하고 나가기", Rect2(182, 213, 276, 40), _save_and_menu)
 	_button(overlay, "설정", Rect2(182, 263, 276, 40), _show_settings)
@@ -291,12 +291,12 @@ func _update_hud(dt: float) -> void:
 	xp_bar.max_value = battle.xp_needed()
 	xp_bar.value = battle.xp
 	health_text.text = str(int(battle.hp))
-	stats.text = "%02d:%02d     ·     레벨 %02d     ·     처치 %04d" % [int(battle.elapsed) / 60, int(battle.elapsed) % 60, battle.level, battle.kills]
+	stats.text = "%02d:%02d     ·     레벨 %02d     ·     퇴치 %04d" % [int(battle.elapsed) / 60, int(battle.elapsed) % 60, battle.level, battle.kills]
 	var parts: Array[String] = []
 	for i in 3:
 		if battle.weapons[i] > 0:
-			parts.append((EVOLUTION_NAMES[i] + " ★") if battle.evolved[i] else ["기관총", "화염방사기", "포격"][i] + " " + str(battle.weapons[i]) + "/6" + " · 지원 " + str(battle.supports[i]))
-	loadout.text = "      ".join(parts) + "      |      10:00 탈출"
+			parts.append((EVOLUTION_NAMES[i] + " ★") if battle.evolved[i] else ["앞발", "털뭉치", "뚜껑"][i] + " " + str(battle.weapons[i]) + "/6" + " · 기억 " + str(battle.supports[i]))
+	loadout.text = "      ".join(parts) + "      |      15:00 아침"
 	if battle.minute() != last_minute and state == "playing":
 		last_minute = battle.minute()
 		wave_label.text = "%02d / %s" % [last_minute + 1, Battle.TITLES[last_minute]]
@@ -307,7 +307,7 @@ func _update_hud(dt: float) -> void:
 	if battle.eligible_evolutions().is_empty():
 		for cache in battle.caches:
 			if cache.distance_to(battle.player) < 35:
-				wave_label.text = "진화 보급함 · 무기 6 + 지원 2레벨 필요"
+				wave_label.text = "익숙한 냄새 · 버릇 6 + 기억 2레벨 필요"
 				banner_time = 0.2
 	banner_time -= dt
 	wave_label.visible = banner_time > 0 and state == "playing"
@@ -335,7 +335,7 @@ func _show_upgrades(keep_options: bool = false) -> void:
 	_backdrop()
 	_chip(overlay, "%d레벨 달성" % battle.level, Rect2(28, 21, 94, 24))
 	_label(overlay, "다음 한 수를 고르세요", Vector2(28, 54), 26)
-	_label(overlay, "장비 하나를 선택하세요. 선택하는 동안 전투는 멈춥니다.", Vector2(29, 91), 11, GameSkin.MUTED)
+	_label(overlay, "새로운 버릇 하나를 고르세요. 고르는 동안 밤은 멈춥니다.", Vector2(29, 91), 11, GameSkin.MUTED)
 	for i in options.size():
 		var id := options[i]
 		var x := 28 + i * 198
@@ -344,10 +344,10 @@ func _show_upgrades(keep_options: bool = false) -> void:
 		_panel(overlay, Rect2(x + 14, 137, 40, 38), Color(tint, 0.10), 10)
 		var icon_index := int(id[1]) + (3 if id.begins_with("s") else 0) if id.length() == 2 else 6
 		_icon(overlay, icon_index, Vector2(x + 18, 139), tint)
-		var rank_text := "보급품"
+		var rank_text := "간식"
 		if id.length() == 2:
 			var rank: int = battle.weapons[int(id[1])] if id.begins_with("w") else battle.supports[int(id[1])]
-			rank_text = "새 장비" if rank == 0 else "%d → %d 레벨" % [rank, rank + 1]
+			rank_text = "새로운 버릇" if rank == 0 else "%d → %d 레벨" % [rank, rank + 1]
 		_label(overlay, rank_text, Vector2(x + 69, 148), 10, tint)
 		var description := _describe(id)
 		_label(overlay, description[0], Vector2(x + 14, 185), 16)
@@ -385,17 +385,17 @@ func _roll_options() -> Array[String]:
 
 func _describe(id: String) -> Array[String]:
 	if id == "heal":
-		return ["응급 의료품", "체력을 30 회복합니다.\n다시 버틸 힘을 얻으세요."]
+		return ["남겨둔 참치캔", "체력을 30 회복합니다.\n다시 버틸 힘을 얻으세요."]
 	if id == "supply":
-		return ["긴급 공중 보급", "체력을 15 회복하고\n전장의 경험치를 모두 수집합니다."]
+		return ["동네 사람의 간식", "체력을 15 회복하고\n전장의 경험치를 모두 수집합니다."]
 	var index := int(id[1])
 	if id[0] == "w":
 		var details := [
-			["가까운 적을 자동으로 공격합니다.\n기본 피해량 10", "피해량 10 → 13", "발사 간격 0.25 → 0.20초", "탄환이 적 하나를 더 관통합니다.", "피해량 13 → 17\n사거리 260 → 300", "발사 간격 0.20 → 0.16초"],
-			["전방의 적을 불꽃으로 휩씁니다.\n지속 피해량 5", "지속 피해량 5 → 7", "사거리 70 → 90", "적을 3초 동안 불태웁니다.\n초당 추가 피해량 4", "공격 각도 60° → 90°\n냉각 시간이 짧아집니다.", "지속 피해량 7 → 9\n분사 시간이 길어집니다."],
-			["8초마다 자동으로 포격합니다.\n폭발 피해량 80", "폭발 피해량 80 → 110", "폭발 반경 48 → 60", "한 번에 포탄 두 발을 발사합니다.", "재사용 시간 8 → 6.5초", "피해량 110 → 140\n폭발 반경 60 → 68"]]
+			["가까운 괴이를 앞발로 할퀴어요.\n피해 18 · 거리 62 · 0.6초", "피해 18 → 22", "공격 주기 0.6 → 0.45초", "할퀴는 각도가 넓어지고\n괴이를 살짝 밀어내요.", "앞발의 기척이 더 멀리 닿아요.\n거리 62 → 78", "피해 22 → 27"],
+			["움직인 자리에 털이 남아요.\n따라오는 괴이에게 지속 피해", "털뭉치 피해 2.5 → 3.5", "털이 남는 시간 3 → 5초", "털에 걸린 괴이가 느려져요.", "털을 남기는 주기\n0.45 → 0.30초", "털뭉치 피해 3.5 → 5"],
+			["앞발로 굴린 뚜껑이\n괴이 셋 사이를 튕겨요.", "피해 22 → 27", "세 번 → 네 번 명중", "한 번에 뚜껑 두 개를 굴려요.", "굴리는 주기 1.8 → 1.2초", "피해 27 → 34"]]
 		return [WEAPON_NAMES[index], details[index][battle.weapons[index]]]
-	return [SUPPORT_NAMES[index], ["기관총 피해량 +10%", "화염방사기 사거리 +10%", "포격 재사용 시간 −10%"][index] + "\n\n무기 6 · 지원 2레벨이면 진화 가능"]
+	return [SUPPORT_NAMES[index], ["할퀴기 피해 +15%", "털뭉치 범위 +5", "뚜껑 재사용 시간 −12%"][index] + "\n\n버릇 6 · 기억 2레벨 + 냄새 발견"]
 
 func _choose(id: String) -> void:
 	if state != "upgrading" or not options.has(id):
@@ -430,14 +430,14 @@ func _show_results() -> void:
 	_clear_overlay()
 	_backdrop()
 	_panel(overlay, Rect2(60, 28, 520, 300), GameSkin.SURFACE, 20)
-	_chip(overlay, "작전 결과", Rect2(84, 47, 76, 23))
-	_label(overlay, "무사히 돌아왔습니다" if battle.victory else "여기까지, 잘 버텼습니다", Vector2(84, 86), 29)
-	_label(overlay, "전선에서의 기록을 확인하세요.", Vector2(85, 128), 12, GameSkin.MUTED)
+	_chip(overlay, "밤 산책 기록", Rect2(84, 47, 76, 23))
+	_label(overlay, "오늘 밤도, 무사히" if battle.victory else "오늘은 여기서 쉴래요", Vector2(84, 86), 29)
+	_label(overlay, "작은 발자국이 골목을 조금 바꿨습니다.", Vector2(85, 128), 12, GameSkin.MUTED)
 	var values := ["%02d:%02d" % [int(battle.elapsed) / 60, int(battle.elapsed) % 60], str(battle.kills), str(battle.level)]
 	for i in 3:
 		var x := 84 + i * 156
 		_panel(overlay, Rect2(x, 164, 146, 76), Color("293d43"), 12)
-		_label(overlay, ["생존 시간", "처치한 적", "도달 레벨"][i], Vector2(x + 14, 174), 10, GameSkin.MUTED)
+		_label(overlay, ["산책 시간", "돌려보낸 괴이", "도달 레벨"][i], Vector2(x + 14, 174), 10, GameSkin.MUTED)
 		_label(overlay, values[i], Vector2(x + 14, 195), 25, GameSkin.MINT)
 	_button(overlay, "다시 도전하기", Rect2(84, 265, 244, 40), start_run, true)
 	_button(overlay, "처음 화면", Rect2(340, 265, 216, 40), _show_menu)

@@ -47,7 +47,7 @@ func _run() -> void:
 	check(game.movement == Vector2.RIGHT, "Emulated mouse release must not reset touch movement")
 	var before: Vector2 = game.battle.player
 	game._physics_process(0.1)
-	check(game.battle.player.x > before.x, "Joystick must move commando")
+	check(game.battle.player.x > before.x, "Joystick must move the cat")
 	game._notification(MainLoop.NOTIFICATION_APPLICATION_FOCUS_OUT)
 	await process_frame
 	check(game.state == "paused", "Background notification must safely pause the game")

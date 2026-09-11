@@ -9,13 +9,13 @@ func check(condition: bool, message: String) -> void:
 func _initialize() -> void:
 	var pool := EntityPool.new(2)
 	var id := pool.spawn(Vector2.ONE, 1, 12)
-	pool.burn[id] = 3
+	pool.residue[id] = 3
 	var generation := pool.generation[id]
 	pool.release(id)
 	pool.release(id)
 	check(pool.count == 0 and pool.free.size() == 2, "Pool release must be idempotent")
 	var reused := pool.spawn(Vector2.ZERO, 0, 10)
-	check(reused == id and pool.burn[id] == 0 and pool.generation[id] > generation, "Reused slot must reset state and advance generation")
+	check(reused == id and pool.residue[id] == 0 and pool.generation[id] > generation, "Reused slot must reset state and advance generation")
 	pool.spawn(Vector2.ZERO, 0, 10)
 	check(pool.spawn(Vector2.ZERO, 0, 10) == -1, "Pool must enforce capacity")
 	var sim := Battle.new(123)
@@ -26,7 +26,7 @@ func _initialize() -> void:
 	sim.spawn_enemy(0, sim.player + Vector2(45, 0))
 	for frame in 120:
 		sim.step(1.0 / 60.0, Vector2.ZERO)
-	check(sim.kills > 0, "Automatic machine gun must kill a nearby enemy")
+	check(sim.kills > 0, "Automatic paw swipe must kill a nearby enemy")
 	sim.pending_levels = 0
 	sim.xp = 0
 	sim._drop_xp(sim.player, 30)
@@ -47,13 +47,13 @@ func _initialize() -> void:
 		aiming.spawn_enemy(0, aiming.player + Vector2.from_angle(bearing * TAU / 8) * 45)
 		for frame in 120:
 			aiming.step(1.0 / 60.0, Vector2.ZERO)
-		check(aiming.kills > 0, "Hand-mounted gun must hit targets in all eight directions")
+		check(aiming.kills > 0, "Automatic paw swipe must hit targets in all eight directions")
 	var health_sim := Battle.new(2)
 	health_sim.hurt_player(10)
 	health_sim.hurt_player(10)
 	check(health_sim.hp == 90, "Invulnerability must prevent stacked same-frame hits")
-	health_sim.elapsed = 599.99
+	health_sim.elapsed = 899.99
 	health_sim.step(0.02, Vector2.ZERO)
-	check(health_sim.finished and health_sim.victory, "Extraction must resolve at ten minutes")
+	check(health_sim.finished and health_sim.victory, "Extraction must resolve at fifteen minutes")
 	print("COMBAT_TESTS_OK" if failures == 0 else "COMBAT_TESTS_FAILED %d" % failures)
 	quit(1 if failures else 0)

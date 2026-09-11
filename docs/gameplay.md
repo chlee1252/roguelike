@@ -1,97 +1,42 @@
-# Last Commando — playable alpha
+# 골목의 밤냥 — 현재 플레이와 기술 구조
 
-## Mission
+전체 콘텐츠 방향은 [25개 항목의 게임 설계](cat-game-design.md)를 따른다. 아래는 현재 코드에 구현된 범위다. 이전 군사 콘셉트는 Git 이력에 보관하고 현재 런타임에서는 사용하지 않는다.
 
-A lone commando survives a fictional military battlefield for ten active minutes.
-Weapons fire automatically. Movement, XP collection, upgrade selection, and dodging
-are the player's decisions. Extraction succeeds at 10:00 even if the command tank
-survives. Death ends the run and opens the after-action report.
+## 플레이 가능한 내용
 
-- Keyboard: WASD/arrows; Enter deploys; Escape pauses; 1–3 choose an upgrade.
-- Mouse: drag the battlefield to move.
-- Touch: floating joystick in the lower-left half; switch to the right in Settings.
-- Opening upgrades or pause freezes the simulation. Resume has a brief countdown
-  and clears old touch input.
-- Save & Briefing preserves the deployment. Continue restores it paused, or restores
-  the pending upgrade selection. Backgrounding and ten-second checkpoints also save.
+- 첫 스테이지 해솔빌라 골목, 15분 생존. 14분에 큰 괴이 ‘돌아오지 않는 골목’ 등장. 보스가 남아 있어도 아침까지 생존하면 성공한다.
+- 네 발로 움직이는 회색 고등어태비. 큰 귀·줄무늬·크림 발끝, 걷기4프레임과 앞발 동작. 사람처럼 총을 들지 않는다.
+- 앞발 할퀴기: 가장 가까운 적 쪽의 근접 부채꼴. 레벨4부터 밀기, 진화 시 전방위.
+- 털뭉치 발자국: 움직일 때만 경로에 털 구역 생성. 적을 지나온 길로 유인하면 지속 피해. 겹친 구역 피해 중첩 없음. 진화 시 잔향 손상과 퇴치 자리의 털 확산.
+- 페트병 뚜껑: 적에게 명중한 뒤 아직 맞지 않은 주변 적으로 튕김. 기본3회, 진화6회. 개체 ID와 세대 번호로 풀 재사용 시 잘못된 재명중 방지.
+- 기억 패시브3종, 공격6레벨·기억2레벨·엘리트의 익숙한 냄새로 진화3종.
+- 먼지·영수증·우산·배수구·봉투·빨래·가로등·골목 건물의 8가지 괴이 행동/외형. 인간 병사와 군사 차량 없음.
+- 음식3종: 참치25 회복, 츄르12 회복+4초 이동20%, 고등어살8 회복+6초 지속회복. 첫18초, 이후23~32초 간격. 건물 안 생성 방지,22초 후 소멸.
+- 상자 안에서 멈추면2초 숨기. 숨는 동안 새 공격 정지. 상자 밖에서10초에 걸쳐 재충전. 밥그릇 주변 초당2 회복, 낮은 담장 통과 시8초마다 착지 충격파.
+- 빌라와 편의점 외벽은 플레이어 이동을 막고 축별 미끄러짐 처리. 괴이는 잔류 기척이므로 건물을 통과할 수 있다. 실외기·물 반사·가로등은 배경 장식.
+- 한글 메뉴, 터치 조이스틱·WASD·방향키·마우스 이동, 성장3택1, 다시뽑기, 설정, 일시 정지·복원·결과 화면.
 
-## Weapons
+## 아직 제작하지 않은 범위
 
-| Level | Heavy machine gun | Tactical flamethrower | Artillery radio |
-| --- | --- | --- | --- |
-| 1 | 10 damage, .25s interval, 260 range | 5 damage/.2s, 70 range, 60° cone, 2s on/2s off | 80 damage, 48 radius, 8s cooldown |
-| 2 | 13 damage | 7 damage/tick | 110 damage |
-| 3 | .20s interval | 90 range | 60 radius |
-| 4 | One additional pierced enemy | 4 damage/s burn, 3s duration | Two shells |
-| 5 | 17 damage, 300 range | 90° cone, 1.5s cooling | 6.5s cooldown |
-| 6 | .16s interval | 9 damage/tick, 3s firing | 140 damage, 68 radius |
+추가17개 무기, 추가 패시브·음식·괴이, 나머지7개 스테이지, 완성판 보스의 체력별 단계, 세탁소 직원 미스터리의 환경 이벤트, 영구 성장·쉼터, 20개 전체 표정 애니메이션, 상점 원화·트레일러. 설계 문서에 상세 조건과 수치를 먼저 정의했다.
 
-Ammo Belt grants +10% machine-gun damage per rank. Pressurized Fuel grants +10%
-flame range per rank. Signal Amplifier removes 10% of artillery's base cooldown
-per rank. Supports cap at rank 2; weapons cap at rank 6.
+## Godot 4 구조
 
-A rank-6 weapon plus its matching rank-2 support becomes eligible for evolution.
-Walk over a gold elite cache to evolve one eligible weapon. Unusable caches remain
-on the battlefield. If several qualify, the order is machine gun, flame, artillery.
+| 파일 | 역할 |
+|---|---|
+| `game/battle.gd` | 렌더링과 분리된 고정 스텝 시뮬레이션. 이동·웨이브·자동공격·음식·상호작용·진화·직렬화 |
+| `game/entity_pool.gd` | 활성 비트, 위치·속도·체력·타입·타이머·잔향 손상·세대 번호를 담은 Packed 배열과 free list |
+| `game/field.gd` | 독립적인 원본 고양이 픽셀 생성, 골목·괴이·공격·줍기 아이템 그리기. 가시 범위 밖 렌더링 생략 |
+| `game/run.gd` | 게임 상태와 한글 UI, 터치 소유권, 일시 정지, 음식 상태를 포함한 저장 복원 |
+| `game/audio.gd` | 짧은 앞발·기척 해체·수집 소리를 합성, 음성8개 재사용 |
+| `ui/skin.gd`, `ui/glyph.gd`, `ui/mission_art.gd` | 한글 폰트·컬러·둥근 카드·고양이 공격 아이콘·메뉴 골목 그림 |
 
-- **Cerberus Rotary Cannon:** two parallel bullets every .12s, three targets per
-  bullet; hits slow enemies briefly. The command tank receives reduced slow.
-- **Inferno Projector:** continuous flame, with three-second ground fires from
-  burning kills. Overlapping fires do not stack; fire damage cannot chain fires.
-- **Rolling Thunder:** five sequential artillery impacts through the target cluster.
+적500·뚜껑400·위험탄600·줍기250개 풀. 털 구역64·효과100·예고32개(적 장판3개) 상한. 64단위 공간 해시로 근처 적만 충돌 검사한다. 빠른 탄은 선분 충돌로 관통 누락을 막는다. 털의 겹친 틱은 Dictionary로 중복 제거한다. 랜덤 시드는 저장돼 테스트와 이어하기가 같은 결과로 진행된다.
 
-Bullets gain 15% damage against burning enemies. Artillery gains 20% against burning
-enemies and 15% against suppressed enemies, added together with a 35% maximum.
+추가 무기17개를 넣을 때는 `WeaponDefinition` Resource(수치·레벨 변화·조합 ID)와 공격 방식별 시스템(직선/연쇄/궤도/경로/유인/표식)을 분리한다. 적마다 Node와 Timer를 붙이지 않는다. 상태이상은 같은 적별 packed 상태에 저장하고, 렌더링 파편은 적과 별도 풀/상한으로 제한한다. 신규 공격은 표적 선택·발동 조건·명중 규칙을 독립 테스트한 뒤 성장 선택 풀에 넣는다.
 
-XP requirement is `8 + 18 × (player_level − 1)`. This was increased after full-run
-simulation showed the original curve caused excessive upgrade interruptions.
-The efficient invulnerable collection bot reaches roughly level 28; that is a
-progression test, not a prediction of typical player performance.
+## 저장과 검증
 
-## Wave schedule
+`user://night-walk.dat`는 현재 산책, `settings.cfg`는 로컬 설정. 게임 이름 변경으로 Godot 사용자 데이터 경로도 새로 분리된다. 저장 schema version2는 음식 효과·상자 충전·진행 타이머·RNG·풀 상태를 보관한다. 이전 군사 콘셉트의 저장을 새 시스템으로 억지로 읽지 않는다. 잘못된 저장은 무시하고 새 산책으로 시작한다.
 
-| Minute | Ordinary spawn rate / active cap | New pressure |
-| --- | --- | --- |
-| 0–1 | 3/s / 80 | Infantry, rifles after 0:40 |
-| 1–2 | 5/s / 120 | Rifle fans and surrounding infantry |
-| 2–3 | 7/s / 170 | Position-locked rush attacks; elite captain at 2:30 |
-| 3–4 | 9/s / 220 | Tank at 3:15; mortar at 3:40 |
-| 4–5 | 11/s / 280 | Elite tank and cache at 4:20 |
-| 5–6 | 13/s / 330 | Helicopter at 5:10; gapped strafe lines |
-| 6–7 | 15/s / 380 | Elite helicopter and cache at 6:30 |
-| 7–8 | 17/s / 430 | Combined pressure; elite captain at 7:40 |
-| 8–9 | 19/s / 480 | Up to 3 ordinary tanks, 2 helicopters, 4 mortars; elite tank at 8:40 |
-| 9–10 | 14/s / 500 | Command tank at 9:00; survive until extraction |
-
-Large attacks share a scheduling budget. Ranged enemies must be visible before
-starting an attack. Enemy projectile windups and mortar circles warn before damage;
-only three hostile ground marks may coexist. Rushers lock a target position before
-charging. Helicopter volleys reserve capacity for the complete pattern and leave a
-gap. Friendly strikes use green markers; hostile markers use orange/red.
-
-## Architecture
-
-- `Battle`: fixed-step, render-independent simulation, seeded randomness, wave
-  schedule, weapons, damage, progression, snapshot validation.
-- `EntityPool`: fixed-capacity packed arrays, free slots, generation counters,
-  reset-on-reuse. Limits: 500 enemies, 400 friendly bullets, 600 hostile bullets,
-  250 pickup clusters.
-- Spatial grid: 64-unit cells for targeting and collision candidates. Fast bullets
-  use swept segment collision, and remember pierced target generations.
-- `Battlefield`: immediate 2D drawing plus small generated pixel textures. No node,
-  collision body, timer, or particle emitter per enemy. Visual effects have caps.
-- `run.gd`: UI, touch ownership, lifecycle, input, save persistence, and presentation.
-- `CombatAudio`: eight reusable sound voices with original synthesized effects.
-
-Pool capacity never grows during a run. XP merges preserve value. Cosmetic effects
-are capped separately. Simulation pauses during choices rather than accumulating
-catch-up time. Saves use Godot Variant serialization without object deserialization,
-validate their version and pool structure, and replace the destination atomically.
-
-## Scope
-
-This is a playable alpha, not a store-ready release. Art is original procedural
-pixel art, with simple vehicle silhouettes and terrain. The battlefield is open;
-terrain markings are decorative. Persistent unlocks, monetization, localization,
-obstacle navigation, extensive content, physical-phone thermal profiling, and store
-signing are outside this build. Balance still needs human playtesting.
+`bash scripts/test-game.sh --render`는 전투, 고양이 고유 기능, 입력·저장, 15분 시뮬레이션, 최대 개체 수 부하, 실제 창 화면 캡처를 검증한다. 무적 수집 봇은 진행 경제와 오류 검사용이며 실제 난도·모바일60fps 보장의 근거는 아니다. 모바일 실행 방법은 [README](../README.md)에 있다.

@@ -1,35 +1,32 @@
 class_name MissionArt
 extends Control
 
-var commando: Texture2D
+var cat_texture: Texture2D
 
 func _draw() -> void:
-	# A small tactical diorama keeps the military setting without stock artwork.
-	draw_style_box(GameSkin.box(Color("2b4145"), 20), Rect2(0, 0, 268, 206))
-	for x in range(18, 268, 24):
-		draw_line(Vector2(x, 12), Vector2(x, 194), Color(0.65, 0.85, 0.8, 0.045), 1, true)
-	for y in range(14, 200, 24):
-		draw_line(Vector2(12, y), Vector2(256, y), Color(0.65, 0.85, 0.8, 0.045), 1, true)
-	var island := PackedVector2Array([Vector2(26, 113), Vector2(126, 58), Vector2(243, 110), Vector2(152, 172)])
-	var depth := PackedVector2Array([Vector2(26, 113), Vector2(152, 172), Vector2(243, 110), Vector2(243, 123), Vector2(152, 187), Vector2(26, 126)])
-	draw_colored_polygon(depth, Color("263735"))
-	draw_colored_polygon(island, Color("71877a"))
-	draw_polyline(PackedVector2Array([Vector2(26, 113), Vector2(152, 172), Vector2(243, 110)]), Color("9eb9a1"), 1, true)
-	draw_colored_polygon(PackedVector2Array([Vector2(85, 82), Vector2(113, 66), Vector2(214, 130), Vector2(188, 148)]), Color("4d6260"))
+	draw_style_box(GameSkin.box(Color("29354c"), 20), Rect2(0, 0, 268, 206))
+	draw_circle(Vector2(229, 28), 11, Color("dfd5b6"))
+	draw_rect(Rect2(20, 30, 104, 88), Color("1c263b"))
+	for y in 2:
+		for x in 3:
+			draw_rect(Rect2(30 + x * 29, 42 + y * 31, 17, 21), Color("ad977f") if x == y else Color("43516a"))
+	draw_rect(Rect2(149, 57, 103, 58), Color("77838e"))
+	draw_rect(Rect2(146, 46, 109, 16), Color("668d92"))
+	draw_string(GameSkin.BOLD, Vector2(158, 57), "달빛 편의점", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color("f6e5c4"))
 	for n in 4:
-		var at := Vector2(112, 88) + Vector2(20, 12) * n
-		draw_line(at, at + Vector2(8, 5), Color("c4c8a0"), 2, true)
-	for at in [Vector2(62, 116), Vector2(196, 103), Vector2(166, 147)]:
-		draw_style_box(GameSkin.box(Color("566c57"), 3), Rect2(at, Vector2(24, 8)))
-		draw_line(at + Vector2(2, 1), at + Vector2(21, 1), Color("93a87e"), 2, true)
-	# Soft rings frame the player; the actual commando remains pixel art.
-	draw_circle(Vector2(128, 116), 34, Color(0.69, 0.89, 0.77, 0.09), true, -1, true)
-	draw_arc(Vector2(128, 116), 34, 0, TAU, 64, Color(0.69, 0.89, 0.77, 0.35), 1, true)
-	draw_circle(Vector2(128, 126), 14, Color(0.05, 0.1, 0.1, 0.22), true, -1, true)
-	if commando:
-		draw_texture_rect(commando, Rect2(104, 75, 48, 48), false)
-		draw_line(Vector2(134, 103), Vector2(155, 95), Color("d4dcc6"), 5)
-	for at in [Vector2(72, 90), Vector2(209, 119), Vector2(173, 80)]:
-		draw_circle(at, 3, Color("e6b599"), true, -1, true)
-		draw_arc(at, 7, 0, TAU, 20, Color(0.9, 0.7, 0.6, 0.35), 1, true)
-	draw_circle(Vector2(231, 29), 3, GameSkin.MINT, true, -1, true)
+		draw_rect(Rect2(154 + n * 24, 68, 19, 42), Color("d6bf95"))
+	draw_colored_polygon(PackedVector2Array([Vector2(24, 116), Vector2(242, 116), Vector2(259, 183), Vector2(9, 183)]), Color("344054"))
+	for n in 5:
+		draw_line(Vector2(13, 123 + n * 13), Vector2(255, 123 + n * 13), Color("3d4b61"), 1)
+	draw_circle(Vector2(67, 138), 34, Color(0.94, 0.75, 0.49, 0.055))
+	draw_line(Vector2(58, 51), Vector2(58, 131), Color("778394"), 3)
+	draw_rect(Rect2(51, 50, 15, 5), Color("efd5a3"))
+	draw_style_box(GameSkin.box(Color("aa8968"), 3), Rect2(23, 142, 36, 22))
+	draw_rect(Rect2(28, 145, 26, 14), Color("49444a"))
+	if cat_texture:
+		draw_texture_rect(cat_texture, Rect2(86, 108, 84, 66), false)
+	draw_style_box(GameSkin.box(Color("aeb5d0"), 8), Rect2(204, 112, 21, 24))
+	for x in [210, 218]:
+		draw_rect(Rect2(x, 120, 2, 3), Color("383951"))
+	draw_style_box(GameSkin.box(Color("849ea0"), 3), Rect2(174, 155, 19, 8))
+	draw_line(Vector2(178, 156), Vector2(189, 156), Color("e8c494"), 2)

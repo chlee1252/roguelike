@@ -14,7 +14,7 @@ func _ready() -> void:
 		voice.volume_db = -20
 		add_child(voice)
 		voices.append(voice)
-	for name in ["gun", "blast", "hit", "pickup", "evolve"]:
+	for name in ["paw", "blast", "hit", "pickup", "evolve"]:
 		sounds[name] = _synthesize(name)
 
 func play(name: String) -> void:
@@ -23,7 +23,7 @@ func play(name: String) -> void:
 	var voice := voices[next_voice]
 	next_voice = (next_voice + 1) % voices.size()
 	voice.stream = sounds[name]
-	voice.volume_db = -26 if name == "gun" or name == "pickup" else -17
+	voice.volume_db = -26 if name == "paw" or name == "pickup" else -17
 	voice.play()
 
 func silence() -> void:
@@ -32,7 +32,7 @@ func silence() -> void:
 		voice.stream = null
 
 func _synthesize(name: String) -> AudioStreamWAV:
-	var duration := 0.06 if name == "gun" else 0.3 if name == "blast" else 0.4 if name == "evolve" else 0.09
+	var duration := 0.06 if name == "paw" else 0.3 if name == "blast" else 0.4 if name == "evolve" else 0.09
 	var rate := 22050
 	var count := int(rate * duration)
 	var data := PackedByteArray()
@@ -43,10 +43,10 @@ func _synthesize(name: String) -> AudioStreamWAV:
 		var t := float(i) / rate
 		var phase := float(i) / count
 		var sample := 0.0
-		if name == "gun":
-			sample = rng.randf_range(-1, 1) * 0.6 + sin(t * 180 * TAU) * 0.4
+		if name == "paw":
+			sample = rng.randf_range(-1, 1) * 0.25 + sin(t * (700 - phase * 420) * TAU) * 0.15
 		elif name == "blast" or name == "hit":
-			sample = rng.randf_range(-1, 1) * 0.45 + sin(t * 60 * TAU) * 0.55
+			sample = rng.randf_range(-1, 1) * 0.15 + sin(t * (220 + phase * 440) * TAU) * 0.3
 		else:
 			var frequency := 900.0 if name == "pickup" else 440.0 * pow(2.0, floor(phase * 4) / 3.0)
 			sample = sin(t * frequency * TAU) * 0.55
