@@ -3,11 +3,11 @@ extends RefCounted
 
 const REGULAR = preload("res://assets/fonts/Pretendard-Regular.ttf")
 const BOLD = preload("res://assets/fonts/Pretendard-Bold.ttf")
-const INK := Color("eef4f2")
-const MUTED := Color("9eafae")
-const MINT := Color("a4dfc6")
-const SURFACE := Color("202f35")
-const BASE := Color("111d24")
+const INK := Color("fff2e3")
+const MUTED := Color("c9bfd2")
+const MINT := Color("f1c99f")
+const SURFACE := Color("3c3855")
+const BASE := Color("29283f")
 
 static func box(color: Color, radius: int = 12, border: Color = Color.TRANSPARENT) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()

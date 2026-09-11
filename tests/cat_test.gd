@@ -20,6 +20,7 @@ func _initialize() -> void:
 	var bounce := Battle.new(8)
 	bounce.weapons.assign([1, 0, 1])
 	bounce.cap_clock = 0
+	bounce.paw_clock = 100
 	for x in [120, 155, 185]:
 		bounce.spawn_enemy(0, bounce.player + Vector2(x, 0))
 	bounce._rebuild_grid()
@@ -28,6 +29,14 @@ func _initialize() -> void:
 		bounce._projectiles(0.02)
 	check(bounce.kills == 3, "A cap must bounce through three distinct spirits")
 	check(bounce.damage_dealt[2] == 48, "Cap damage must count once for each of three targets")
+	var bones := Battle.new(5)
+	for x in [100, 140, 190]:
+		bones.spawn_enemy(0, bones.player + Vector2(x, 0))
+	bones._rebuild_grid()
+	bones._weapons(0.01)
+	for frame in 60:
+		bones._projectiles(0.02)
+	check(bones.kills == 2 and bones.damage_dealt[0] == 32, "A base fishbone must pierce exactly two targets in a straight line")
 	var shelter := Battle.new(12)
 	shelter.player = shelter.landmarks[0].at
 	shelter._city_objects(0.1)
@@ -56,6 +65,17 @@ func _initialize() -> void:
 	for i in food.pickups.capacity:
 		if food.pickups.alive[i]:
 			check(not food._building_at(food.pickups.position[i]), "Food must not spawn inside a building")
+	var overtime := Battle.new(7)
+	overtime.elapsed = 905
+	overtime.god_mode = true
+	var boss := overtime.spawn_enemy(7, overtime.player + Vector2(100, 0))
+	overtime.fired_events[840] = true
+	overtime.step(0.1, Vector2.ZERO)
+	check(not overtime.finished, "Passing fifteen minutes must not bypass the boss")
+	var continued := Battle.new(3)
+	check(continued.restore(overtime.snapshot()), "Overtime boss fight must remain resumable")
+	overtime._hurt_enemy(boss, 100000, 0)
+	check(overtime.finished and overtime.victory and overtime.fired_events.has("boss_defeated"), "Defeating the stage boss must clear the stage")
 	var walls := Battle.new(7)
 	walls.player = Vector2(315, 30)
 	walls.god_mode = true

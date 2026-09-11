@@ -32,6 +32,12 @@ func _run() -> void:
 	game.battle.effects[-1].life = 0.32
 	game.field.queue_redraw()
 	await _capture("firing-impact")
+	var stage_boss: int = game.battle.spawn_enemy(7, game.battle.player + Vector2(100, 15))
+	game.battle.enemies.health[stage_boss] = game.battle.boss_max_hp * 0.4
+	game._update_hud(0)
+	game.field.queue_redraw()
+	await _capture("stage-boss")
+	game.battle.enemies.release(stage_boss)
 	game.battle.pending_levels = 1
 	game._show_upgrades()
 	await process_frame

@@ -1,8 +1,8 @@
 extends Control
 
-const WEAPON_NAMES := ["앞발 할퀴기", "털뭉치 발자국", "페트병 뚜껑"]
-const SUPPORT_NAMES := ["스크래처 기억", "두꺼운 겨울털", "깨끗한 발바닥"]
-const EVOLUTION_NAMES := ["우다다 냥펀치", "온 골목이 내 털", "골목 핀볼"]
+const WEAPON_NAMES := ["생선뼈 툭툭", "털뭉치 발자국", "통통 장난감 공"]
+const SUPPORT_NAMES := ["간식 자리의 기억", "두꺼운 겨울털", "깨끗한 발바닥"]
+const EVOLUTION_NAMES := ["와다다 생선뼈", "온 골목이 내 털", "통통 털실공"]
 var battle: Battle
 var field: Battlefield
 var hud: Control
@@ -29,6 +29,9 @@ var audio: CombatAudio
 var save_clock := 0.0
 var mirrored := false
 var reduced_effects := false
+var boss_panel: Control
+var boss_bar: ProgressBar
+var boss_title: Label
 var health_text: Label
 var save_path := "user://night-walk.dat"
 
@@ -71,15 +74,15 @@ func _button(parent: Node, text: String, rect: Rect2, action: Callable, primary:
 	button.size = rect.size
 	button.add_theme_font_size_override("font_size", 12)
 	button.add_theme_font_override("font", GameSkin.BOLD)
-	var normal := GameSkin.box(GameSkin.MINT if primary else Color("2a3b43"), 10)
+	var normal := GameSkin.box(GameSkin.MINT if primary else Color("514965"), 10)
 	normal.content_margin_left = 10
 	normal.content_margin_right = 10
 	button.add_theme_stylebox_override("normal", normal)
 	var hover := normal.duplicate() as StyleBoxFlat
-	hover.bg_color = Color("c3eddb") if primary else Color("3a5058")
+	hover.bg_color = Color("c3eddb") if primary else Color("665a7a")
 	button.add_theme_stylebox_override("hover", hover)
 	var pressed := normal.duplicate() as StyleBoxFlat
-	pressed.bg_color = Color("85c6ac") if primary else Color("1f3038")
+	pressed.bg_color = Color("85c6ac") if primary else Color("413952")
 	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_stylebox_override("focus", GameSkin.box(Color.TRANSPARENT, 10, Color("bedccd")))
 	for state_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
@@ -142,6 +145,18 @@ func _build_hud() -> void:
 	hud.add_child(xp_bar)
 	health_bar.size = Vector2(131, 4)
 	xp_bar.size = Vector2(280, 3)
+	boss_panel = Control.new()
+	boss_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(boss_panel)
+	_panel(boss_panel, Rect2(170, 52, 300, 34), Color("514965"), 10)
+	boss_title = _label(boss_panel, "멍멍 꿈대장", Vector2(184, 55), 10, GameSkin.INK)
+	boss_bar = ProgressBar.new()
+	boss_bar.position = Vector2(184, 76)
+	_style_bar(boss_bar, Color("efb5c3"))
+	boss_bar.show_percentage = false
+	boss_panel.add_child(boss_bar)
+	boss_bar.size = Vector2(272, 4)
+	boss_panel.visible = false
 	_button(hud, "Ⅱ", Rect2(580, 10, 48, 38), pause_run)
 
 func _style_bar(bar: ProgressBar, color: Color) -> void:
@@ -165,9 +180,9 @@ func _show_menu() -> void:
 	_panel(overlay, Rect2(0, 0, 640, 360), GameSkin.BASE, 0)
 	_label(overlay, "골목의 밤냥", Vector2(32, 23), 16)
 	_button(overlay, "설정", Rect2(548, 20, 60, 32), _show_settings)
-	_chip(overlay, "15분 밤 산책  ·  자동 전투", Rect2(32, 67, 144, 24))
-	_label(overlay, "귀신이 보여도,\n나는 고양이.", Vector2(30, 106), 29)
-	_label(overlay, "따뜻한 밥 냄새를 따라 걷다가\n오늘도 이상한 밤을 만나버렸다.", Vector2(32, 204), 12, GameSkin.MUTED)
+	_chip(overlay, "밤 산책  ·  보스 도전", Rect2(32, 67, 144, 24))
+	_label(overlay, "말랑한 발로,\n통통 밤 산책.", Vector2(30, 106), 29)
+	_label(overlay, "생선뼈 톡, 털실공 통통!\n장난꾸러기 앙숙들과 골목 한 바퀴.", Vector2(32, 204), 12, GameSkin.MUTED)
 	var art := MissionArt.new()
 	art.position = Vector2(340, 72)
 	art.cat_texture = field.sprites[0]
@@ -182,7 +197,7 @@ func _show_menu() -> void:
 	else:
 		_button(overlay, "밤 산책 시작  →", Rect2(32, 269, 244, 44), start_run, true)
 	_label(overlay, "목표", Vector2(343, 294), 10, GameSkin.MUTED)
-	_label(overlay, "잘 먹고, 잘 피하고, 아침까지 돌아다녀요.", Vector2(373, 294), 9)
+	_label(overlay, "장난꾸러기 보스를 만나러 가요.", Vector2(373, 294), 9)
 	var hint := "화면을 누르고 끌어 이동 · 공격은 고양이가 알아서 해요" if OS.has_feature("mobile") else "WASD / 방향키 · 터치 드래그로 이동     Esc 일시정지"
 	_label(overlay, hint, Vector2(32, 334), 9, GameSkin.MUTED)
 
@@ -289,6 +304,13 @@ func _physics_process(dt: float) -> void:
 	controls_layer.queue_redraw()
 
 func _update_hud(dt: float) -> void:
+	var boss_hp := battle.boss_health()
+	boss_panel.visible = boss_hp > 0
+	if boss_hp > 0:
+		boss_bar.max_value = battle.boss_max_hp
+		boss_bar.value = boss_hp
+		boss_title.text = "멍멍 꿈대장  ·  " + ("더 신났어요!" if boss_hp < battle.boss_max_hp * 0.5 else "골목의 장난꾸러기")
+	wave_label.position.y = 90 if boss_hp > 0 else 58
 	health_bar.value = battle.hp
 	xp_bar.max_value = battle.xp_needed()
 	xp_bar.value = battle.xp
@@ -297,8 +319,8 @@ func _update_hud(dt: float) -> void:
 	var parts: Array[String] = []
 	for i in 3:
 		if battle.weapons[i] > 0:
-			parts.append((EVOLUTION_NAMES[i] + " ★") if battle.evolved[i] else ["앞발", "털뭉치", "뚜껑"][i] + " " + str(battle.weapons[i]) + "/6" + " · 기억 " + str(battle.supports[i]))
-	loadout.text = "      ".join(parts) + "      |      15:00 아침"
+			parts.append((EVOLUTION_NAMES[i] + " ★") if battle.evolved[i] else ["생선뼈", "털뭉치", "장난감 공"][i] + " " + str(battle.weapons[i]) + "/6" + " · 기억 " + str(battle.supports[i]))
+	loadout.text = "      ".join(parts) + "      |      보스 퇴치 후 귀가"
 	if battle.minute() != last_minute and state == "playing":
 		last_minute = battle.minute()
 		wave_label.text = "%02d / %s" % [last_minute + 1, Battle.TITLES[last_minute]]
@@ -393,11 +415,11 @@ func _describe(id: String) -> Array[String]:
 	var index := int(id[1])
 	if id[0] == "w":
 		var details := [
-			["가까운 괴이를 앞발로 할퀴어요.\n피해 18 · 거리 62 · 0.6초", "피해 18 → 22", "공격 주기 0.6 → 0.45초", "할퀴는 각도가 넓어지고\n괴이를 살짝 밀어내요.", "앞발의 기척이 더 멀리 닿아요.\n거리 62 → 78", "피해 22 → 27"],
+			["앞발로 생선뼈를 톡 밀어요.\n피해 18 · 두 마리 관통", "피해 18 → 22", "공격 주기 0.6 → 0.45초", "생선뼈가 세 마리를 관통해요.", "생선뼈 조준 거리\n220 → 280", "피해 22 → 27"],
 			["움직인 자리에 털이 남아요.\n따라오는 괴이에게 지속 피해", "털뭉치 피해 2.5 → 3.5", "털이 남는 시간 3 → 5초", "털에 걸린 괴이가 느려져요.", "털을 남기는 주기\n0.45 → 0.30초", "털뭉치 피해 3.5 → 5"],
-			["앞발로 굴린 뚜껑이\n괴이 셋 사이를 튕겨요.", "피해 22 → 27", "세 번 → 네 번 명중", "한 번에 뚜껑 두 개를 굴려요.", "굴리는 주기 1.8 → 1.2초", "피해 27 → 34"]]
+			["앞발로 굴린 공이\n괴이 셋 사이를 튕겨요.", "피해 22 → 27", "세 번 → 네 번 명중", "한 번에 장난감 공 두 개를 굴려요.", "굴리는 주기 1.8 → 1.2초", "피해 27 → 34"]]
 		return [WEAPON_NAMES[index], details[index][battle.weapons[index]]]
-	return [SUPPORT_NAMES[index], ["할퀴기 피해 +15%", "털뭉치 범위 +5", "뚜껑 재사용 시간 −12%"][index] + "\n\n버릇 6 · 기억 2레벨 + 냄새 발견"]
+	return [SUPPORT_NAMES[index], ["생선뼈 피해 +15%", "털뭉치 범위 +5", "장난감 공 재사용 시간 −12%"][index] + "\n\n버릇 6 · 기억 2레벨 + 냄새 발견"]
 
 func _choose(id: String) -> void:
 	if state != "upgrading" or not options.has(id):
@@ -433,7 +455,7 @@ func _show_results() -> void:
 	_backdrop()
 	_panel(overlay, Rect2(60, 28, 520, 300), GameSkin.SURFACE, 20)
 	_chip(overlay, "밤 산책 기록", Rect2(84, 47, 76, 23))
-	_label(overlay, "오늘 밤도, 무사히" if battle.victory else "오늘은 여기서 쉴래요", Vector2(84, 86), 29)
+	_label(overlay, "골목 산책 완료!" if battle.victory else "잠시 쉬어가는 밤", Vector2(84, 86), 29)
 	_label(overlay, "작은 발자국이 골목을 조금 바꿨습니다.", Vector2(85, 128), 12, GameSkin.MUTED)
 	var values := ["%02d:%02d" % [int(battle.elapsed) / 60, int(battle.elapsed) % 60], str(battle.kills), str(battle.level)]
 	for i in 3:

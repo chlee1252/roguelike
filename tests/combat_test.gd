@@ -54,6 +54,6 @@ func _initialize() -> void:
 	check(health_sim.hp == 90, "Invulnerability must prevent stacked same-frame hits")
 	health_sim.elapsed = 899.99
 	health_sim.step(0.02, Vector2.ZERO)
-	check(health_sim.finished and health_sim.victory, "Extraction must resolve at fifteen minutes")
+	check(not health_sim.finished, "Elapsed time alone must not clear the stage")
 	print("COMBAT_TESTS_OK" if failures == 0 else "COMBAT_TESTS_FAILED %d" % failures)
 	quit(1 if failures else 0)

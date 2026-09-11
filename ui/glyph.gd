@@ -6,9 +6,13 @@ var ink := GameSkin.MINT
 func _draw() -> void:
 	match icon:
 		0:
-			draw_circle(Vector2(16, 20), 6, ink, false, 2, true)
-			for at in [Vector2(7, 12), Vector2(14, 8), Vector2(22, 10)]:
-				draw_circle(at, 3, ink, false, 1.5, true)
+			draw_line(Vector2(5, 16), Vector2(23, 16), ink, 2, true)
+			for x in [9, 14, 19]:
+				draw_line(Vector2(x - 2, 10), Vector2(x + 2, 22), ink, 1.5, true)
+			draw_circle(Vector2(25, 16), 4, ink, false, 1.5, true)
+			draw_circle(Vector2(26, 15), 1, ink)
+			draw_line(Vector2(5, 16), Vector2(2, 12), ink, 1.5, true)
+			draw_line(Vector2(5, 16), Vector2(2, 20), ink, 1.5, true)
 		1, 4:
 			for n in 7:
 				var at := Vector2(16, 16) + Vector2.from_angle(n * 2.4) * 7

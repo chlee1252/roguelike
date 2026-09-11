@@ -10,7 +10,7 @@ const ENEMY_RADIUS := [8.0, 8.0, 8.0, 9.0, 20.0, 22.0, 13.0, 30.0]
 const WAVE_CAP := [55, 75, 100, 120, 145, 175, 200, 230, 260, 290, 330, 370, 410, 450, 500]
 const WAVE_RATE := [2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 10.0]
 const TITLES := ["골목이 낯설다", "꺼진 가로등", "누가 따라온다", "편의점 불빛", "상자 속 숨바꼭질", "낯선 발자국", "비닐이 우는 밤", "밥그릇의 기억", "담장 너머", "잠들지 않는 골목", "빈집의 숨", "돌아오지 않는 사람", "귀가 쫑긋", "거리가 접힌다", "아침을 기다리며"]
-const ENEMY_NAMES := ["먼지꼬리", "영수증 나풀", "버려진 우산발", "배수구 꿀렁", "빈봉투 배불뚝", "빨래바람", "가로등 깜빡이", "돌아오지 않는 골목"]
+const ENEMY_NAMES := ["멍멍 꼬마", "깍깍 까마귀", "우다다 강아지", "칙칙 분무기", "웅웅 청소기", "까마귀 대장", "삐삐 청소대장", "멍멍 꿈대장"]
 var enemies := EntityPool.new(500)
 var shots := EntityPool.new(400)
 var hostile := EntityPool.new(600)
@@ -27,6 +27,7 @@ var xp := 0
 var pending_levels := 0
 var finished := false
 var victory := false
+var boss_max_hp := 2400.0
 var invulnerable := 0.0
 var spawn_clock := 0.0
 var paw_clock := 0.0
@@ -73,6 +74,12 @@ func _init(seed_value: int = 0) -> void:
 	else:
 		rng.seed = seed_value
 
+func boss_health() -> float:
+	for id in enemies.capacity:
+		if enemies.alive[id] and enemies.kind[id] == 7:
+			return enemies.health[id]
+	return -1
+
 func xp_needed() -> int:
 	return 8 + 18 * (level - 1)
 
@@ -85,11 +92,7 @@ func camera() -> Vector2:
 func step(dt: float, movement: Vector2) -> void:
 	if finished or pending_levels > 0:
 		return
-	elapsed = minf(RUN_SECONDS, elapsed + dt)
-	if elapsed >= RUN_SECONDS:
-		finished = true
-		victory = true
-		return
+	elapsed += dt
 	invulnerable = maxf(0.0, invulnerable - dt)
 	hit_flash = maxf(0.0, hit_flash - dt)
 	moving = movement.length_squared() > 0.01
@@ -129,7 +132,7 @@ func _spawn(dt: float) -> void:
 	spawn_clock -= dt
 	if spawn_clock <= 0:
 		spawn_clock = 1.0 / WAVE_RATE[minute()]
-		if enemies.count < WAVE_CAP[minute()]:
+		if elapsed < RUN_SECONDS and enemies.count < WAVE_CAP[minute()]:
 			var type := 0
 			var roll := rng.randf()
 			if elapsed > 40 and roll > 0.78:
@@ -154,7 +157,7 @@ func _spawn(dt: float) -> void:
 				elite_ids[spawned] = enemies.generation[spawned]
 				enemies.health[spawned] *= 1.8
 			fired_events[event[0]] = true
-			events.append("돌아오지 않는 골목이 깨어납니다" if event[1] == 7 else "큰 괴이가 다가옵니다" if event[1] == 6 else "낯선 기척이 짙어집니다")
+			events.append("멍멍 꿈대장이 놀러 왔어요" if event[1] == 7 else "큰 괴이가 다가옵니다" if event[1] == 6 else "낯선 기척이 짙어집니다")
 
 func _type_count(type: int) -> int:
 	var count := 0
@@ -176,6 +179,8 @@ func _spawn_position() -> Vector2:
 func spawn_enemy(type: int, at: Vector2) -> int:
 	var id := enemies.spawn(at, type, ENEMY_HP[type] * (1.0 + minute() * 0.1))
 	if id >= 0:
+		if type == 7:
+			boss_max_hp = enemies.health[id]
 		enemies.timer[id] = rng.randf_range(1.5, 4.0)
 	return id
 
@@ -251,7 +256,9 @@ func _enemy_attack(id: int, type: int, direction: Vector2) -> void:
 		return
 	var amount := 3 if type < 4 else 5
 	if type == 7:
-		amount = 9
+		var excited := enemies.health[id] <= boss_max_hp * 0.5
+		amount = 11 if excited else 9
+		enemies.timer[id] = 3.2 if excited else 4.5
 	if hostile.free.size() < amount:
 		return
 	# Delayed projectile activation provides a visible muzzle windup.
@@ -351,18 +358,15 @@ func _weapons(dt: float) -> void:
 		return
 	paw_clock -= dt
 	if paw_clock <= 0:
-		var reach := 78.0 if weapons[0] >= 5 else 62.0
-		var target := nearest(player, reach)
+		var target := nearest(player, 280 if weapons[0] >= 5 else 220)
 		if target >= 0:
 			aim = player.direction_to(enemies.position[target])
-			var angle := 1.4 if weapons[0] >= 4 else 0.95
-			for id in nearby(player, reach + 22):
-				var diff := enemies.position[id] - player
-				if enemies.alive[id] and diff.length() < reach + ENEMY_RADIUS[enemies.kind[id]] and (evolved[0] or absf(aim.angle_to(diff)) < angle):
-					_hurt_enemy(id, (27 if weapons[0] >= 6 else 22 if weapons[0] >= 2 else 18) * (1 + supports[0] * 0.15), 0)
-					if enemies.alive[id] and weapons[0] >= 4:
-						enemies.position[id] += diff.normalized() * (3 if enemies.kind[id] >= 6 else 10)
-			add_effect(player + aim * 22, reach * 0.48, 0.16, 3)
+			for n in (2 if evolved[0] else 1):
+				var direction := aim.rotated((n - 0.5) * 0.09 if evolved[0] else 0)
+				var shot := shots.spawn(player + Vector2(0, -3), 0, (27 if weapons[0] >= 6 else 22 if weapons[0] >= 2 else 18) * (1 + supports[0] * 0.15), direction * 300, 1.0)
+				if shot >= 0:
+					shots.aux[shot] = 5 if evolved[0] else 3 if weapons[0] >= 4 else 2
+					shot_hits[shot] = []
 			paw_clock = 0.36 if evolved[0] else 0.45 if weapons[0] >= 3 else 0.6
 			_sound("paw")
 	# Loose fur is left behind while moving: circle back to lure pursuers into it.
@@ -416,11 +420,13 @@ func _projectiles(dt: float) -> void:
 						if not shot_hits.has(i):
 							shot_hits[i] = []
 						shot_hits[i].append(identity)
-						_hurt_enemy(id, pool.health[i], 2)
+						_hurt_enemy(id, pool.health[i], pool.kind[i])
 						pool.aux[i] -= 1
 						if pool.aux[i] <= 0:
 							pool.release(i)
 							break
+						if pool.kind[i] == 0:
+							continue
 						var next_target := -1
 						var best := 150.0 * 150.0
 						for other in nearby(pool.position[i], 150):
@@ -488,6 +494,9 @@ func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -
 			caches.append(at)
 			elite_ids.erase(id)
 		if type == 7:
+			finished = true
+			victory = true
+			fired_events["boss_defeated"] = true
 			for bullet in hostile.capacity:
 				hostile.release(bullet)
 			events.append("골목에 아침 냄새가 돌아옵니다")
@@ -563,7 +572,7 @@ func _collect(dt: float) -> void:
 			if not eligible.is_empty():
 				evolved[eligible[0]] = true
 				caches.remove_at(i)
-				events.append(["우다다 연속냥펀치", "온 골목이 내 털", "골목 핀볼 완성"][eligible[0]])
+				events.append(["우다다 연속냥펀치", "온 골목이 내 털", "통통 털실공 완성"][eligible[0]])
 				_sound("evolve")
 
 func eligible_evolutions() -> Array[int]:
@@ -591,7 +600,7 @@ func _sound(name: String) -> void:
 		sound_events.append(name)
 
 func snapshot() -> Dictionary:
-	return {"version": 2, "enemies": enemies.snapshot(), "shots": shots.snapshot(),
+	return {"version": 3, "enemies": enemies.snapshot(), "shots": shots.snapshot(),
 		"hostile": hostile.snapshot(), "pickups": pickups.snapshot(), "player": player,
 		"aim": aim, "hp": hp, "elapsed": elapsed, "kills": kills, "level": level,
 		"xp": xp, "pending_levels": pending_levels, "invulnerable": invulnerable,
@@ -601,11 +610,11 @@ func snapshot() -> Dictionary:
 		"cap_clock": cap_clock, "volley_clock": volley_clock,
 		"fur_tick_clock": fur_tick_clock, "fur_patches": fur_patches, "elite_ids": elite_ids, "shot_hits": shot_hits,
 		"trail_direction": trail_direction, "damage_dealt": damage_dealt,
-		"hide_charge": hide_charge, "food_clock": food_clock, "food_boost": food_boost, "food_regen": food_regen, "interact_clock": interact_clock,
+		"boss_max_hp": boss_max_hp, "hide_charge": hide_charge, "food_clock": food_clock, "food_boost": food_boost, "food_regen": food_regen, "interact_clock": interact_clock,
 		"seed": rng.seed, "rng_state": rng.state}
 
 func restore(data: Dictionary) -> bool:
-	if data.get("version", 0) != 2:
+	if data.get("version", 0) != 3:
 		return false
 	var schema := snapshot()
 	for key in schema.keys():
@@ -642,11 +651,11 @@ func restore(data: Dictionary) -> bool:
 			return false
 	if data.weapons[0] < 1 or data.level < 1 or data.pending_levels < 0:
 		return false
-	if data.elapsed < 0 or data.elapsed >= RUN_SECONDS or data.hp <= 0 or data.hp > 100:
+	if data.elapsed < 0 or data.hp <= 0 or data.hp > 100:
 		return false
 	for key in ["enemies", "shots", "hostile", "pickups"]:
 		get(key).restore(data[key])
-	for key in ["player", "aim", "hp", "elapsed", "kills", "level", "xp", "pending_levels", "invulnerable", "fired_events", "rerolls", "spawn_clock", "paw_clock", "trail_clock", "cap_clock", "volley_clock", "fur_tick_clock", "elite_ids", "shot_hits", "trail_direction", "food_clock", "food_boost", "food_regen", "interact_clock", "hide_charge"]:
+	for key in ["player", "aim", "hp", "elapsed", "kills", "level", "xp", "pending_levels", "invulnerable", "fired_events", "rerolls", "spawn_clock", "paw_clock", "trail_clock", "cap_clock", "volley_clock", "fur_tick_clock", "elite_ids", "shot_hits", "trail_direction", "food_clock", "food_boost", "food_regen", "interact_clock", "hide_charge", "boss_max_hp"]:
 		set(key, data[key])
 	weapons.assign(data.weapons)
 	supports.assign(data.supports)
