@@ -9,7 +9,7 @@ const ENEMY_SPEED := [29.0, 22.0, 42.0, 19.0, 14.0, 35.0, 25.0, 12.0]
 const ENEMY_RADIUS := [8.0, 8.0, 8.0, 9.0, 20.0, 22.0, 13.0, 30.0]
 const WAVE_CAP := [55, 75, 100, 120, 145, 175, 200, 230, 260, 290, 330, 370, 410, 450, 500]
 const WAVE_RATE := [2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 10.0]
-const TITLES := ["골목이 낯설다", "꺼진 가로등", "누가 따라온다", "편의점 불빛", "상자 속 숨바꼭질", "낯선 발자국", "비닐이 우는 밤", "밥그릇의 기억", "담장 너머", "잠들지 않는 골목", "빈집의 숨", "돌아오지 않는 사람", "귀가 쫑긋", "거리가 접힌다", "아침을 기다리며"]
+const TITLES := ["골목이 낯설다", "꺼진 가로등", "누가 따라온다", "편의점 불빛", "상자 속 숨바꼭질", "낯선 발자국", "바스락거리는 소리", "밥그릇의 기억", "담장 너머", "유령이 가득한 골목", "빈집에서 나는 소리", "돌아오지 않는 사람", "귀가 쫑긋", "좁아지는 골목", "아침을 기다리며"]
 const ENEMY_NAMES := ["멍멍 꼬마", "깍깍 까마귀", "우다다 강아지", "칙칙 분무기", "웅웅 청소기", "까마귀 대장", "삐삐 청소대장", "멍멍 꿈대장"]
 var enemies := EntityPool.new(500)
 var shots := EntityPool.new(400)
@@ -231,7 +231,7 @@ func _spawn(dt: float) -> void:
 				elite_ids[spawned] = enemies.generation[spawned]
 				enemies.health[spawned] *= 1.8
 			fired_events[event[0]] = true
-			events.append(NightContent.BOSSES[stage_id] + " 등장!" if event[1] == 7 else "큰 괴이가 다가옵니다" if event[1] == 6 else "낯선 기척이 짙어집니다")
+			events.append(NightContent.BOSSES[stage_id] + " 등장!" if event[1] == 7 else "강한 유령이 다가와요" if event[1] == 6 else "유령이 더 몰려와요")
 
 func _type_count(type: int) -> int:
 	var count := 0
@@ -506,7 +506,7 @@ func _projectiles(dt: float) -> void:
 			if pool == hostile:
 				var closest := Geometry2D.get_closest_point_to_segment(player, before, pool.position[i])
 				if closest.distance_squared_to(player) < 81:
-					hurt_player(pool.health[i], "괴이의 탄환")
+					hurt_player(pool.health[i], "유령의 공격")
 					pool.release(i)
 			else:
 				for id in nearby(pool.position[i], 40):
@@ -689,7 +689,7 @@ func eligible_evolutions() -> Array[int]:
 			result.append(i)
 	return result
 
-func hurt_player(amount: float, source: String = "괴이와 부딪힘") -> void:
+func hurt_player(amount: float, source: String = "유령과 부딪힘") -> void:
 	if invulnerable > 0 or god_mode or hidden:
 		return
 	last_damage = source
@@ -946,10 +946,10 @@ func _take_item(kind: int) -> void:
 func _night_events(_dt: float) -> void:
 	if elapsed >= 45 and clue_at == Vector2.ZERO and not clue_found:
 		clue_at = open_position(player + Vector2(115, 45))
-		events.append("단서가 나타났어요! 발자국 표시를 따라가세요.")
+		events.append("밥을 주던 사람의 물건 발견! 노란 화살표를 따라가 보세요.")
 	if not clue_found and clue_at != Vector2.ZERO and player.distance_to(clue_at) < 26:
 		clue_found = true
-		events.append(NightContent.CLUE_NOTES[stage_id])
+		events.append("기록했어요! " + NightContent.CLUE_NOTES[stage_id])
 		_sound("upgrade")
 	if elapsed >= next_event and elapsed < NightContent.BOSS_AT[stage_id]:
 		next_event += 120

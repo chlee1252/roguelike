@@ -13,16 +13,28 @@ func _run() -> void:
 	var scene := load("res://app/game.tscn") as PackedScene
 	var game := scene.instantiate()
 	game.save_path = "user://ui-test.dat"
+	game.settings_path = "user://ui-guide-test.cfg"
 	root.add_child(game)
 	await process_frame
 	game.set_physics_process(false)
+	game.tutorial_seen = false
 	check(game.state == "menu", "Game must boot into briefing")
 	var key := InputEventKey.new()
 	key.keycode = KEY_ENTER
 	key.pressed = true
 	Input.parse_input_event(key)
 	await process_frame
-	check(game.state == "playing", "Enter input must deploy from briefing")
+	check(game.state == "tutorial", "First run must explain controls before combat")
+	var frozen: float = game.battle.elapsed
+	game._physics_process(1)
+	check(game.battle.elapsed == frozen, "Guide must freeze combat")
+	for page in 4:
+		check(game.tutorial_page == page, "Guide pages must advance in order")
+		game._guide_next()
+	check(game.state == "playing" and game.tutorial_seen, "Finishing guide must start combat")
+	game.tutorial_seen = false
+	game._load_settings()
+	check(game.tutorial_seen, "Guide completion must persist")
 	var touch := InputEventScreenTouch.new()
 	touch.index = 3
 	touch.position = Vector2(100, 250)
@@ -54,6 +66,11 @@ func _run() -> void:
 	var paused_time: float = game.battle.elapsed
 	game._physics_process(0.1)
 	check(game.battle.elapsed == paused_time and game.movement == Vector2.ZERO, "Pause must freeze time and clear input")
+	game._open_guide()
+	check(game.state == "tutorial", "Pause menu must reopen instructions")
+	for page in 4:
+		game._guide_next()
+	check(game.state == "paused", "Replayed guide must return to pause")
 	game._resume()
 	game._physics_process(0.8)
 	check(game.state == "playing", "Resume countdown must return to combat")
@@ -82,6 +99,21 @@ func _run() -> void:
 	var broken: Dictionary = game.battle.snapshot()
 	broken["weapons"] = 42
 	check(not Battle.new(3).restore(broken), "Malformed save types must be rejected")
+	check(ProjectSettings.get_setting("display/window/handheld/orientation") == DisplayServer.SCREEN_SENSOR_LANDSCAPE, "Mobile must allow both landscape orientations")
+	game.battle.hp = 70
+	for landmark in game.battle.landmarks:
+		if landmark.kind == 1:
+			game.battle.player = landmark.at
+			game.battle._city_objects(1)
+			check(is_equal_approx(game.battle.hp, 72), "Bowl must heal two HP per second inside ring")
+			game.battle.player += Vector2(30, 0)
+			game.battle._city_objects(1)
+			check(is_equal_approx(game.battle.hp, 72), "Bowl must not heal outside ring")
+			break
+	var selected_theme: int = game.field.theme_id
+	game._show_results()
+	check(game.field.theme_id == selected_theme and not game.hud.visible, "Results must preserve alley theme and hide HUD")
+	DirAccess.remove_absolute(game.settings_path)
 	game.audio.silence()
 	game.queue_free()
 	await create_timer(0.15).timeout

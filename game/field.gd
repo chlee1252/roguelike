@@ -43,12 +43,15 @@ func _draw() -> void:
 				if battle.player.distance_to(object.at) < 80:
 					_text("상자 · 멈추면 숨기", at + Vector2(-32, 24), 8, Color("b9b5b2"))
 			1:
-				draw_circle(at, 24, Color(0.65, 0.84, 0.72, 0.08))
+				draw_circle(at, 22, Color(0.65, 0.84, 0.72, 0.20))
+				draw_arc(at, 22, 0, TAU, 32, Color("a4cfbc"), 1)
 				draw_style_box(GameSkin.box(Color("789b9e"), 4), Rect2(at - Vector2(10, 5), Vector2(20, 10)))
 				for n in 5:
 					draw_circle(at + Vector2(n * 3 - 6, -1), 2, Color("dbb28b"))
 				if battle.player.distance_to(object.at) < 80:
-					_text("누군가 놓은 밥", at + Vector2(-27, 22), 8, Color("a4cfbc"))
+					var eating := battle.player.distance_to(object.at) <= 22
+					var note := "체력 가득!" if eating and battle.hp >= 100 else "회복 중 · 초당 +2" if eating else "밥그릇 · 원 안에서 체력 회복"
+					_text(note, at + Vector2(-48, 35), 9, Color("a4cfbc"))
 			2:
 				draw_rect(Rect2(at - Vector2(26, 7), Vector2(52, 14)), Color("64717e"))
 				for x in range(-24, 25, 8):
@@ -167,6 +170,8 @@ func _draw() -> void:
 			for n in 7:
 				var point: Vector2 = at + Vector2.from_angle(n * 2.4) * effect.radius * phase + Vector2(0, -phase * 12)
 				draw_rect(Rect2(point.round(), Vector2(2, 2)), Color(tint, 1 - phase))
+
+	_clue_marker(shift)
 
 func _cat(at: Vector2) -> void:
 	draw_style_box(GameSkin.box(Color(0.04, 0.05, 0.10, 0.45), 5), Rect2(at + Vector2(-13, 3), Vector2(26, 7)))
@@ -328,8 +333,10 @@ func _night_objects(shift: Vector2) -> void:
 		else:
 			draw_colored_polygon(PackedVector2Array([at + Vector2(-7, 5), at + Vector2(-4, -8), at + Vector2(6, -6), at + Vector2(8, 5)]), Color("bad6d0"))
 			_text("바스락", at + Vector2(-12, -12), 8, Color("cce3d8"))
+
+func _clue_marker(shift: Vector2) -> void:
 	if battle.clue_at != Vector2.ZERO and not battle.clue_found:
-		var at := (battle.clue_at + shift).clamp(Vector2(30, 90), Vector2(610, 302))
+		var at := (battle.clue_at + shift).clamp(Vector2(100, 100), Vector2(540, 275))
 		if battle.stage_id == 0:
 			draw_arc(at, 12, PI, TAU, 12, Color("e4c486"), 5)
 			draw_line(at, at + Vector2(0, 12), Color("bdb9b3"), 2)
@@ -340,5 +347,8 @@ func _night_objects(shift: Vector2) -> void:
 		else:
 			draw_style_box(GameSkin.box(Color("baa6bd"), 4), Rect2(at - Vector2(13, 8), Vector2(26, 16)))
 			draw_line(at + Vector2(-8, -4), at + Vector2(8, 4), Color("d8c4d4"), 2)
-		_text("발자국", at + Vector2(-12, 3), 8, Color("f2d49d"))
+		var direction := (battle.clue_at - battle.player).normalized()
+		var arrow := at - direction * 26
+		draw_colored_polygon(PackedVector2Array([arrow + direction * 9, arrow - direction * 5 + direction.orthogonal() * 6, arrow - direction * 5 - direction.orthogonal() * 6]), Color("ffe3a1"))
+		draw_arc(at, 19, 0, TAU, 32, Color("ffe3a1"), 2)
 		_text(NightContent.CLUES[battle.stage_id], at + Vector2(-32, 24), 9, Color("eee0c2"))

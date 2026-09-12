@@ -24,6 +24,23 @@ func _run() -> void:
 		game._shelter_tab(tab)
 		await _capture("shelter-" + str(tab))
 	game.start_run()
+	game.set_physics_process(false)
+	game.tutorial_return = "playing"
+	for page in 4:
+		game.tutorial_page = page
+		game._show_guide()
+		await _capture("guide-" + str(page))
+	game._clear_overlay()
+	game.state = "playing"
+	game.battle.hp = 70
+	for landmark in game.battle.landmarks:
+		if landmark.kind == 1:
+			game.battle.player = landmark.at
+			break
+	game.battle.clue_at = game.battle.player + Vector2(100, -20)
+	game.field.queue_redraw()
+	game._update_hud(0)
+	await _capture("bowl-and-clue")
 	game.battle.god_mode = true
 	game.battle.weapons.assign([4, 4, 4, 0, 0, 0, 0, 0])
 	game.battle.elapsed = 365
