@@ -3,6 +3,11 @@ extends Control
 const WEAPON_NAMES := ["생선뼈 툭툭", "털뭉치 발자국", "통통 장난감 공"]
 const SUPPORT_NAMES := ["간식 자리의 기억", "두꺼운 겨울털", "깨끗한 발바닥"]
 const EVOLUTION_NAMES := ["와다다 생선뼈", "온 골목이 내 털", "통통 털실공"]
+var collection := CatCollection.new()
+var shop := TokenShop.new()
+var shop_tab := 0
+var run_id := ""
+var shop_notice := ""
 var battle: Battle
 var field: Battlefield
 var hud: Control
@@ -49,6 +54,14 @@ func _ready() -> void:
 	audio = CombatAudio.new()
 	add_child(audio)
 	_load_settings()
+	shop.collection = collection
+	shop.preview = OS.is_debug_build() and OS.get_cmdline_user_args().has("--shop-preview")
+	shop.endpoint = OS.get_environment("NIGHTCAT_SHOP_URL")
+	shop.access_token = OS.get_environment("NIGHTCAT_SHOP_ACCESS_TOKEN")
+	add_child(shop)
+	collection.open(save_path + (".preview-collection.cfg" if shop.preview else ".collection.cfg"))
+	field.set_cat_variant(collection.selected)
+	field.theme_id = collection.selected_theme
 	_build_hud()
 	controls_layer = Node2D.new()
 	controls_layer.z_index = 10
@@ -179,13 +192,15 @@ func _show_menu() -> void:
 	_clear_overlay()
 	_panel(overlay, Rect2(0, 0, 640, 360), GameSkin.BASE, 0)
 	_label(overlay, "골목의 밤냥", Vector2(32, 23), 16)
+	_button(overlay, "고양이 · 상점", Rect2(425, 20, 112, 32), _show_cats)
 	_button(overlay, "설정", Rect2(548, 20, 60, 32), _show_settings)
 	_chip(overlay, "밤 산책  ·  보스 도전", Rect2(32, 67, 144, 24))
 	_label(overlay, "말랑한 발로,\n통통 밤 산책.", Vector2(30, 106), 29)
 	_label(overlay, "생선뼈 톡, 털실공 통통!\n장난꾸러기 앙숙들과 골목 한 바퀴.", Vector2(32, 204), 12, GameSkin.MUTED)
 	var art := MissionArt.new()
 	art.position = Vector2(340, 72)
-	art.cat_texture = field.sprites[0]
+	art.theme_id = collection.selected_theme
+	art.cat_texture = CatPixel.make(0, true, collection.selected)
 	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	overlay.add_child(art)
 	_label(overlay, "첫 번째 밤", Vector2(358, 84), 10, GameSkin.MINT)
@@ -202,6 +217,9 @@ func _show_menu() -> void:
 	_label(overlay, hint, Vector2(32, 334), 9, GameSkin.MUTED)
 
 func start_run() -> void:
+	run_id = "%s-%s" % [str(Time.get_unix_time_from_system()), str(Time.get_ticks_usec())]
+	field.set_cat_variant(collection.selected)
+	field.theme_id = collection.selected_theme
 	_clear_save()
 	battle = Battle.new()
 	field.battle = battle
@@ -486,12 +504,12 @@ func _pause_for_background() -> void:
 		pause_run()
 
 func _save_session() -> void:
-	if battle == null or battle.finished or state in ["menu", "results"]:
+	if battle == null or battle.finished or state in ["menu", "cats", "results"]:
 		return
 	var file := FileAccess.open(save_path + ".tmp", FileAccess.WRITE)
 	if file == null:
 		return
-	file.store_var({"battle": battle.snapshot(), "options": options if state == "upgrading" else []})
+	file.store_var({"run_id": run_id, "battle": battle.snapshot(), "options": options if state == "upgrading" else []})
 	file.flush()
 	file.close()
 	DirAccess.rename_absolute(save_path + ".tmp", save_path)
@@ -515,6 +533,9 @@ func _continue_run() -> void:
 	var restored := Battle.new(1)
 	if not restored.restore(data.battle):
 		return
+	run_id = str(data.get("run_id", "legacy-%s" % str(restored.rng.seed)))
+	field.set_cat_variant(collection.selected)
+	field.theme_id = collection.selected_theme
 	battle = restored
 	field.battle = battle
 	hud.visible = true
@@ -567,3 +588,97 @@ func _toggle_setting(key: String) -> void:
 		"effects": reduced_effects = not reduced_effects
 	_save_settings()
 	_show_settings()
+
+func _show_cats() -> void:
+	state = "cats"
+	_reset_input()
+	hud.visible = false
+	_clear_overlay()
+	_panel(overlay, Rect2(0, 0, 640, 360), GameSkin.BASE, 0)
+	_label(overlay, "골목의 작은 상점", Vector2(25, 18), 25)
+	_chip(overlay, ("테스트 토큰  " if shop.preview else "보유 토큰  ") + str(collection.tokens), Rect2(26, 57, 150, 25))
+	_button(overlay, "돌아가기", Rect2(520, 23, 94, 34), _show_menu)
+	for tab in 3:
+		_button(overlay, ["고양이", "배경 테마", "토큰 구매"][tab], Rect2(202 + tab * 102, 56, 96, 28), _change_shop_tab.bind(tab), shop_tab == tab)
+	if shop_tab == 2:
+		_show_token_packs()
+	else:
+		_show_cosmetics()
+	var caption := "[테스트 상점] 가상 토큰만 사용하며 실제 결제·구매 내역과 분리됩니다." if shop.preview else "토큰으로 고양이와 배경을 해금해요 · 현금 결제 준비 중 · 능력치는 모두 같아요"
+	_label(overlay, shop_notice if not shop_notice.is_empty() else caption, Vector2(26, 321), 10, GameSkin.MUTED)
+
+func _change_shop_tab(tab: int) -> void:
+	shop_tab = tab
+	shop_notice = ""
+	_show_cats()
+
+func _show_cosmetics() -> void:
+	var background := shop_tab == 1
+	for id in 4:
+		var x := 26 + id * 150
+		_panel(overlay, Rect2(x, 96, 138, 206), GameSkin.SURFACE, 14)
+		if background:
+			var art := MissionArt.new()
+			art.theme_id = id
+			art.cat_texture = CatPixel.make(0, true, collection.selected)
+			art.position = Vector2(x + 7, 112)
+			art.scale = Vector2.ONE * 0.46
+			art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			overlay.add_child(art)
+		else:
+			var preview := TextureRect.new()
+			preview.texture = CatPixel.make(0, true, id)
+			preview.position = Vector2(x + 21, 112)
+			preview.size = Vector2(96, 96)
+			preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			overlay.add_child(preview)
+		_label(overlay, AlleyTheme.NAMES[id] if background else CatPixel.NAMES[id], Vector2(x + 10, 213), 12 if background else 17)
+		var owned := (collection.themes if background else collection.unlocked).has(id)
+		var selected := id == (collection.selected_theme if background else collection.selected)
+		_label(overlay, "선택한 산책길" if selected and background else "함께 산책 중" if selected else "보유 중" if owned else "미리 보는 산책길" if background else "아직 만나지 않은 친구", Vector2(x + 10, 241), 9, GameSkin.MUTED)
+		var price: int = CatCollection.THEME_PRICES[id] if background else CatCollection.PRICES[id]
+		var button := _button(overlay, "선택됨" if selected else "선택하기" if owned else "%d 토큰 · 해금" % price, Rect2(x + 10, 268, 118, 27), _cat_action.bind(id, background), selected)
+		button.disabled = selected or shop.busy
+
+func _show_token_packs() -> void:
+	_label(overlay, "토큰 한 지갑으로, 고양이도 골목도", Vector2(28, 104), 17)
+	for index in 3:
+		var x := 26 + index * 198
+		_panel(overlay, Rect2(x, 142, 188, 135), GameSkin.SURFACE, 14)
+		_label(overlay, "%d 토큰" % CatCollection.PACKS[index], Vector2(x + 18, 158), 24)
+		_label(overlay, "고양이 · 배경 공용", Vector2(x + 18, 197), 11, GameSkin.MUTED)
+		var button := _button(overlay, "가상 구매 · 무료 테스트" if shop.preview else "결제 준비 중", Rect2(x + 12, 230, 164, 32), _buy_tokens.bind(index), shop.preview)
+		button.disabled = not shop.preview or shop.busy
+	_button(overlay, "구매 내역 새로고침", Rect2(26, 284, 160, 28), _refresh_shop)
+	_label(overlay, "현금 결제는 Apple / Google 상점 연결 후 열려요.", Vector2(205, 292), 11, GameSkin.MUTED)
+
+func _cat_action(id: int, background := false) -> void:
+	if shop.busy:
+		return
+	shop_notice = ""
+	if not (collection.themes if background else collection.unlocked).has(id):
+		shop_notice = await shop.unlock(id, background)
+		if not shop_notice.is_empty():
+			if state == "cats":
+				_show_cats()
+			return
+	if collection.choose(id, background):
+		field.set_cat_variant(collection.selected)
+		field.theme_id = collection.selected_theme
+		shop_notice = (AlleyTheme.NAMES[id] if background else CatPixel.NAMES[id]) + " 선택했어요."
+	else:
+		shop_notice = "선택을 저장하지 못했어요. 다시 시도해 주세요."
+	if state == "cats":
+		_show_cats()
+
+func _buy_tokens(index: int) -> void:
+	shop_notice = shop.buy_pack(index)
+	_show_cats()
+
+func _refresh_shop() -> void:
+	shop_notice = await shop.refresh()
+	if shop_notice.is_empty():
+		shop_notice = "보유 토큰과 해금 내역을 확인했어요."
+	if state == "cats":
+		_show_cats()

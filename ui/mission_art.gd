@@ -1,10 +1,11 @@
 class_name MissionArt
 extends Control
 
+var theme_id := 0
 var cat_texture: Texture2D
 
 func _draw() -> void:
-	draw_style_box(GameSkin.box(Color("635b80"), 20), Rect2(0, 0, 268, 206))
+	draw_style_box(GameSkin.box(Color(AlleyTheme.TILES[theme_id]).lightened(0.12), 20), Rect2(0, 0, 268, 206))
 	for at in [Vector2(135, 18), Vector2(180, 30), Vector2(99, 21), Vector2(246, 81)]:
 		draw_line(at - Vector2(2, 0), at + Vector2(2, 0), Color("f9dfb3"))
 		draw_line(at - Vector2(0, 2), at + Vector2(0, 2), Color("f9dfb3"))
@@ -14,7 +15,7 @@ func _draw() -> void:
 		for x in 3:
 			draw_rect(Rect2(30 + x * 29, 42 + y * 31, 17, 21), Color("ad977f") if x == y else Color("96849e"))
 	draw_rect(Rect2(149, 57, 103, 58), Color("77838e"))
-	draw_rect(Rect2(146, 46, 109, 16), Color("668d92"))
+	draw_rect(Rect2(146, 46, 109, 16), Color(AlleyTheme.ACCENT[theme_id]))
 	draw_string(GameSkin.BOLD, Vector2(158, 57), "달빛 편의점", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color("f6e5c4"))
 	for n in 4:
 		draw_rect(Rect2(154 + n * 24, 68, 19, 42), Color("d6bf95"))
@@ -27,7 +28,7 @@ func _draw() -> void:
 	draw_style_box(GameSkin.box(Color("aa8968"), 3), Rect2(23, 142, 36, 22))
 	draw_rect(Rect2(28, 145, 26, 14), Color("49444a"))
 	if cat_texture:
-		draw_texture_rect(cat_texture, Rect2(86, 108, 84, 66), false)
+		draw_texture_rect(cat_texture, Rect2(80, 84, 96, 96), false)
 	draw_style_box(GameSkin.box(Color("d6b6a2"), 7), Rect2(204, 112, 23, 24))
 	draw_style_box(GameSkin.box(Color("aa8e9f"), 3), Rect2(201, 113, 5, 13))
 	draw_style_box(GameSkin.box(Color("aa8e9f"), 3), Rect2(225, 113, 5, 13))
@@ -37,3 +38,5 @@ func _draw() -> void:
 		draw_rect(Rect2(x, 120, 2, 3), Color("383951"))
 	draw_style_box(GameSkin.box(Color("849ea0"), 3), Rect2(174, 155, 19, 8))
 	draw_line(Vector2(178, 156), Vector2(189, 156), Color("e8c494"), 2)
+
+	AlleyTheme.decorate(self, theme_id, Rect2(0, 0, 268, 206), 0)

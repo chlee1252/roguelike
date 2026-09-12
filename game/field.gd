@@ -2,48 +2,22 @@ class_name Battlefield
 extends Node2D
 
 var battle: Battle
+var cat_variant := 0
+var theme_id := 0
 var sprites: Array[Texture2D] = []
 
 func _ready() -> void:
 	_make_sprites()
 
+func set_cat_variant(value: int) -> void:
+	cat_variant = clampi(value, 0, 3)
+	sprites.clear()
+	_make_sprites()
+	queue_redraw()
+
 func _make_sprites() -> void:
-	# A round-cheeked ginger cat, drawn as original stepped pixels.
 	for frame in 4:
-		var picture := Image.create(28, 22, false, Image.FORMAT_RGBA8)
-		var outline := Color("594459")
-		var coat := Color("eeb582")
-		var cream := Color("fff1d1")
-		picture.fill_rect(Rect2i(5, 10, 15, 9), outline)
-		picture.fill_rect(Rect2i(6, 9, 13, 9), coat)
-		picture.fill_rect(Rect2i(8, 14, 11, 4), cream)
-		picture.fill_rect(Rect2i(1, 6 + frame % 2, 3, 8), outline)
-		picture.fill_rect(Rect2i(2, 5 + frame % 2, 4, 3), outline)
-		picture.fill_rect(Rect2i(2, 7 + frame % 2, 2, 6), coat)
-		picture.fill_rect(Rect2i(3, 12, 4, 3), coat)
-		for x in [8, 15]:
-			var step := frame % 2 if x == 8 else -(frame % 2)
-			picture.fill_rect(Rect2i(x + step, 17, 4, 3), outline)
-			picture.fill_rect(Rect2i(x + step, 17, 3, 2), cream)
-		picture.fill_rect(Rect2i(13, 5, 14, 9), outline)
-		picture.fill_rect(Rect2i(15, 3, 10, 13), outline)
-		picture.fill_rect(Rect2i(14, 6, 12, 7), coat)
-		picture.fill_rect(Rect2i(16, 4, 8, 11), coat)
-		for x in [14, 23]:
-			picture.fill_rect(Rect2i(x, 1, 3, 5), outline)
-			picture.fill_rect(Rect2i(x + 1, 3, 2, 3), Color("efb5b0"))
-		for x in [8, 11, 18, 21]:
-			picture.fill_rect(Rect2i(x, 10 if x < 13 else 5, 1, 2), Color("c9916b"))
-		for x in [16, 22]:
-			picture.fill_rect(Rect2i(x, 8, 3, 3), outline)
-			picture.set_pixel(x, 8, Color.WHITE)
-		picture.fill_rect(Rect2i(15, 11, 2, 1), Color("ec9ba2"))
-		picture.fill_rect(Rect2i(24, 11, 2, 1), Color("ec9ba2"))
-		picture.fill_rect(Rect2i(18, 11, 5, 3), cream)
-		picture.set_pixel(20, 11, Color("c78391"))
-		picture.set_pixel(19, 13, outline)
-		picture.set_pixel(21, 13, outline)
-		sprites.append(ImageTexture.create_from_image(picture))
+		sprites.append(CatPixel.make(frame, false, cat_variant))
 
 func _draw() -> void:
 	if battle == null:
@@ -164,10 +138,10 @@ func _cat(at: Vector2) -> void:
 	var left := battle.aim.x < -0.05
 	var tint := Color(1, 1, 1, 0.45) if battle.hidden else Color.WHITE
 	draw_set_transform(at + Vector2(0, -bounce), 0, Vector2(-1 if left else 1, 1))
-	draw_texture_rect(sprites[frame], Rect2(-14, -17, 28, 22), false, tint)
+	draw_texture_rect(sprites[frame], Rect2(-16, -25, 32, 32), false, tint)
 	var paw_interval := 0.36 if battle.evolved[0] else 0.45 if battle.weapons[0] >= 3 else 0.6
 	if battle.paw_clock > paw_interval - 0.16:
-		draw_rect(Rect2(9, -2, 5, 3), Color("e3d7bd"))
+		draw_rect(Rect2(9, -2, 4, 3), [CatPixel.COAT, Color("625e68"), Color("f2e6d1"), Color("f6f0e5")][cat_variant])
 	draw_set_transform(Vector2.ZERO)
 	if battle.hidden:
 		_text("쉿…", at + Vector2(-8, -24), 9, Color("e5d4b3"))
@@ -237,13 +211,13 @@ func _text(value: String, at: Vector2, size: int, tint: Color) -> void:
 	draw_string(GameSkin.REGULAR, at, value, HORIZONTAL_ALIGNMENT_LEFT, -1, size, tint)
 
 func _ground(shift: Vector2) -> void:
-	draw_rect(Rect2(0, 0, 640, 360), Color("45435f"))
+	draw_rect(Rect2(0, 0, 640, 360), Color(AlleyTheme.GROUND[theme_id]))
 	var origin := Vector2i(((battle.camera() - Vector2(320, 180)) / 64).floor())
 	for y in range(origin.y - 1, origin.y + 7):
 		for x in range(origin.x - 1, origin.x + 12):
 			var at := Vector2(x * 64, y * 64) + shift
 			var hash_value := posmod(x * 17 + y * 31, 9)
-			draw_rect(Rect2(at, Vector2(63, 63)), Color("4b4866") if hash_value < 3 else Color("494561"))
+			draw_rect(Rect2(at, Vector2(63, 63)), Color(AlleyTheme.TILES[theme_id]) if hash_value < 3 else Color(AlleyTheme.GROUND[theme_id]).lightened(0.02))
 			if hash_value == 0:
 				draw_style_box(GameSkin.box(Color("6b6380"), 4), Rect2(at + Vector2(11, 27), Vector2(32, 9)))
 				draw_line(at + Vector2(17, 29), at + Vector2(33, 29), Color("9a89a5"))
@@ -253,14 +227,23 @@ func _ground(shift: Vector2) -> void:
 			var at := Vector2(x, y) + shift
 			if not Rect2(-170, -100, 980, 560).has_point(at):
 				continue
-			draw_rect(Rect2(at, Vector2(116, 55)), Color("39354f"))
-			draw_rect(Rect2(at + Vector2(0, 2), Vector2(116, 8)), Color("766980"))
+			draw_rect(Rect2(at, Vector2(116, 55)), Color(AlleyTheme.WALL[theme_id]))
+			draw_rect(Rect2(at + Vector2(0, 2), Vector2(116, 8)), Color(AlleyTheme.ROOF[theme_id]))
 			for n in 3:
 				draw_rect(Rect2(at + Vector2(12 + n * 32, 19), Vector2(18, 22)), Color("b18e71") if n == 1 else Color("887993"))
 				draw_line(at + Vector2(20 + n * 32, 19), at + Vector2(20 + n * 32, 41), Color("252d43"), 2)
 			draw_rect(Rect2(at + Vector2(120, 10), Vector2(27, 21)), Color("5d6675"))
 			for n in 5:
 				draw_line(at + Vector2(124, 13 + n * 3), at + Vector2(141, 13 + n * 3), Color("333e51"))
+			if theme_id == 1:
+				draw_rect(Rect2(at + Vector2(86, 53), Vector2(5, 17)), Color("8c7180"))
+				for petal in [Vector2(80, 47), Vector2(91, 43), Vector2(101, 49)]:
+					draw_circle(at + petal, 11, Color("af819b"))
+			elif theme_id == 2:
+				draw_style_box(GameSkin.box(Color("3e617a"), 6), Rect2(at + Vector2(60, 66), Vector2(54, 10)))
+				draw_line(at + Vector2(71, 70), at + Vector2(101, 70), Color("67969f"))
+			elif theme_id == 3:
+				draw_style_box(GameSkin.box(Color("a8becf"), 5), Rect2(at + Vector2(3, 54), Vector2(100, 6)))
 			var lamp := at + Vector2(162, 60)
 			draw_circle(lamp, 33, Color(0.94, 0.73, 0.46, 0.045))
 			draw_circle(lamp, 22, Color(0.94, 0.73, 0.46, 0.06))
@@ -268,10 +251,12 @@ func _ground(shift: Vector2) -> void:
 			draw_rect(Rect2(lamp - Vector2(5, 37), Vector2(10, 4)), Color("efd5a2"))
 	var store := Battle.WORLD * 0.5 + Vector2(105, -112) + shift
 	draw_rect(Rect2(store, Vector2(128, 56)), Color("756881"))
-	draw_rect(Rect2(store + Vector2(0, -15), Vector2(128, 16)), Color("95b6b1"))
+	draw_rect(Rect2(store + Vector2(0, -15), Vector2(128, 16)), Color(AlleyTheme.ACCENT[theme_id]))
 	_text("달빛 편의점  ·  24", store + Vector2(12, -3), 10, Color("efe0bf"))
 	for n in 4:
 		draw_rect(Rect2(store + Vector2(6 + n * 30, 7), Vector2(25, 43)), Color("898e91"))
 		draw_rect(Rect2(store + Vector2(9 + n * 30, 10), Vector2(19, 34)), Color("ddc69e"))
 	_text("해솔빌라  골목 03", Battle.WORLD * 0.5 + Vector2(-125, -86) + shift, 10, Color("7c8ba2"))
 	draw_rect(Rect2(shift, Battle.WORLD), Color("606c86"), false, 3)
+
+	AlleyTheme.decorate(self, theme_id, Rect2(0, 0, 640, 360), battle.elapsed)

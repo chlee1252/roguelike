@@ -11,6 +11,9 @@ func _run() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/menu.png")
+	for tab in 3:
+		game._change_shop_tab(tab)
+		await _capture("shop-" + str(tab))
 	game.start_run()
 	game.battle.god_mode = true
 	game.battle.weapons.assign([4, 4, 4])
@@ -26,6 +29,13 @@ func _run() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/combat.png")
+	for theme_id in 4:
+		game.field.theme_id = theme_id
+		game.field.set_cat_variant(theme_id)
+		game.field.queue_redraw()
+		await _capture("theme-" + str(theme_id))
+	game.field.theme_id = 0
+	game.field.set_cat_variant(0)
 	game.battle.aim = Vector2.RIGHT
 	game.battle.paw_clock = 0.45
 	game.battle.add_effect(game.battle.player + Vector2(46, -12), 14, 0.42, 2)
