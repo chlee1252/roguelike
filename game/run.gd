@@ -85,6 +85,7 @@ func _ready() -> void:
 func _label(parent: Node, text: String, at: Vector2, font_size: int, color := GameSkin.INK) -> Label:
 	var label := Label.new()
 	label.text = text
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.position = at
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_font_override("font", GameSkin.BOLD if font_size >= 16 else GameSkin.REGULAR)
@@ -93,16 +94,24 @@ func _label(parent: Node, text: String, at: Vector2, font_size: int, color := Ga
 	parent.add_child(label)
 	return label
 
+func _cell_label(parent: Node, text: String, rect: Rect2, font_size: int, color := GameSkin.INK) -> Label:
+	var label := _label(parent, "", rect.position, font_size, color)
+	label.size = rect.size
+	label.text = text
+	return label
+
 func _button(parent: Node, text: String, rect: Rect2, action: Callable, primary: bool = false) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.position = rect.position
-	button.size = rect.size
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.add_theme_font_size_override("font_size", 12)
 	button.add_theme_font_override("font", GameSkin.BOLD)
 	var normal := GameSkin.box(GameSkin.MINT if primary else Color("514965"), 10)
 	normal.content_margin_left = 10
 	normal.content_margin_right = 10
+	normal.content_margin_top = 4
+	normal.content_margin_bottom = 4
 	button.add_theme_stylebox_override("normal", normal)
 	var hover := normal.duplicate() as StyleBoxFlat
 	hover.bg_color = Color("c3eddb") if primary else Color("665a7a")
@@ -110,11 +119,15 @@ func _button(parent: Node, text: String, rect: Rect2, action: Callable, primary:
 	var pressed := normal.duplicate() as StyleBoxFlat
 	pressed.bg_color = Color("85c6ac") if primary else Color("413952")
 	button.add_theme_stylebox_override("pressed", pressed)
+	var disabled := normal.duplicate() as StyleBoxFlat
+	disabled.bg_color = Color("353147")
+	button.add_theme_stylebox_override("disabled", disabled)
 	button.add_theme_stylebox_override("focus", GameSkin.box(Color.TRANSPARENT, 10, Color("bedccd")))
 	for state_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		button.add_theme_color_override(state_name, Color("183a32") if primary else GameSkin.INK)
 	button.pressed.connect(action)
 	parent.add_child(button)
+	button.size = rect.size
 	screen_buttons.append(button)
 	return button
 
@@ -132,7 +145,7 @@ func _backdrop() -> void:
 
 func _chip(parent: Node, text: String, rect: Rect2, color := GameSkin.MINT) -> void:
 	_panel(parent, rect, Color(color, 0.10), 8)
-	_label(parent, text, rect.position + Vector2(10, 4), 9, color)
+	_cell_label(parent, text, Rect2(rect.position + Vector2(10, 0), rect.size - Vector2(20, 0)), 9, color)
 
 func _icon(parent: Node, index: int, at: Vector2, tint := GameSkin.MINT) -> void:
 	var glyph := EquipmentGlyph.new()
@@ -149,11 +162,11 @@ func _build_hud() -> void:
 	add_child(hud)
 	_panel(hud, Rect2(12, 10, 155, 39), Color(0.06, 0.11, 0.14, 0.92), 12)
 	_panel(hud, Rect2(235, 10, 300, 36), Color(0.06, 0.11, 0.14, 0.92), 12)
-	title = _label(hud, "동네 고양이", Vector2(24, 15), 10, GameSkin.MUTED)
-	health_text = _label(hud, "100", Vector2(135, 15), 10, GameSkin.MINT)
-	stats = _label(hud, "", Vector2(251, 19), 12)
+	title = _cell_label(hud, "동네 고양이", Rect2(24, 10, 107, 25), 10, GameSkin.MUTED)
+	health_text = _cell_label(hud, "100", Rect2(135, 10, 30, 25), 10, GameSkin.MINT)
+	stats = _cell_label(hud, "", Rect2(251, 10, 270, 33), 12)
 	_panel(hud, Rect2(12, 324, 616, 26), Color(0.06, 0.11, 0.14, 0.88), 9)
-	loadout = _label(hud, "", Vector2(24, 330), 9, GameSkin.MUTED)
+	loadout = _cell_label(hud, "", Rect2(24, 324, 592, 26), 9, GameSkin.MUTED)
 	wave_label = _label(hud, "", Vector2(150, 58), 13, Color("e6c69b"))
 	wave_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	wave_label.size = Vector2(440, 42)
@@ -177,7 +190,7 @@ func _build_hud() -> void:
 	boss_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(boss_panel)
 	_panel(boss_panel, Rect2(170, 52, 300, 34), Color("514965"), 10)
-	boss_title = _label(boss_panel, "멍멍 꿈대장", Vector2(184, 55), 10, GameSkin.INK)
+	boss_title = _cell_label(boss_panel, "멍멍 꿈대장", Rect2(184, 52, 272, 24), 10, GameSkin.INK)
 	boss_bar = ProgressBar.new()
 	boss_bar.position = Vector2(184, 76)
 	_style_bar(boss_bar, Color("efb5c3"))
@@ -207,7 +220,7 @@ func _show_menu() -> void:
 	hud.visible = false
 	_clear_overlay()
 	_panel(overlay, Rect2(0, 0, 640, 360), GameSkin.BASE, 0)
-	_label(overlay, "골목의 밤냥", Vector2(32, 23), 16)
+	_cell_label(overlay, "골목의 밤냥", Rect2(32, 20, 280, 32), 16)
 	_button(overlay, "쉼터", Rect2(335, 20, 80, 32), _show_shelter)
 	_button(overlay, "고양이 · 상점", Rect2(425, 20, 112, 32), _show_cats)
 	_button(overlay, "설정", Rect2(548, 20, 60, 32), _show_settings)
@@ -437,9 +450,9 @@ func _show_upgrades(keep_options: bool = false) -> void:
 		if id.begins_with("w") or id.begins_with("s"):
 			var rank: int = battle.weapons[id.substr(1).to_int()] if id.begins_with("w") else battle.supports[id.substr(1).to_int()]
 			rank_text = ("새 무기" if id.begins_with("w") else "새 강화") if rank == 0 else "%d → %d 레벨" % [rank, rank + 1]
-		_label(overlay, rank_text, Vector2(x + 69, 148), 10, tint)
+		_cell_label(overlay, rank_text, Rect2(x + 69, 137, 105, 38), 10, tint)
 		var description := _describe(id)
-		_label(overlay, description[0], Vector2(x + 14, 185), 16)
+		_cell_label(overlay, description[0], Rect2(x + 14, 180, 160, 32), 16)
 		var detail := _label(overlay, "", Vector2(x + 14, 212), 10, GameSkin.MUTED)
 		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		detail.size = Vector2(160, 78)
@@ -545,8 +558,8 @@ func _show_results() -> void:
 	for i in 3:
 		var x := 84 + i * 156
 		_panel(overlay, Rect2(x, 164, 146, 76), Color("293d43"), 12)
-		_label(overlay, ["산책 시간", "처치한 적", "도달 레벨"][i], Vector2(x + 14, 174), 10, GameSkin.MUTED)
-		_label(overlay, values[i], Vector2(x + 14, 195), 25, GameSkin.MINT)
+		_cell_label(overlay, ["산책 시간", "처치한 적", "도달 레벨"][i], Rect2(x + 14, 170, 118, 20), 10, GameSkin.MUTED)
+		_cell_label(overlay, values[i], Rect2(x + 14, 190, 118, 42), 25, GameSkin.MINT)
 	_label(overlay, "발견: " + NightContent.CLUES[battle.stage_id] if battle.victory else "마지막 위험: " + battle.last_damage, Vector2(84, 247), 10, GameSkin.MUTED)
 	_button(overlay, "이야기 보기" if battle.victory else "다시 도전", Rect2(84, 277, 244, 36), _show_story if battle.victory else start_run, true)
 	_button(overlay, "쉼터로 돌아가기" if result_saved else "기록 저장 재시도", Rect2(340, 277, 216, 36), _show_shelter if result_saved else _show_results)
@@ -653,7 +666,7 @@ func _show_settings() -> void:
 	for i in 5:
 		var y := 102 + i * 35
 		_panel(overlay, Rect2(150, y, 340, 32), Color("293b43"), 10)
-		_label(overlay, ["배경음악", "효과음", "조이스틱 위치", "화면 흔들림·피해 숫자", "햅틱 (진동)"][i], Vector2(166, y + 7), 12)
+		_cell_label(overlay, ["배경음악", "효과음", "조이스틱 위치", "화면 흔들림·피해 숫자", "햅틱 (진동)"][i], Rect2(166, y, 218, 32), 12)
 		var active: bool = [audio.music_enabled, audio.enabled, mirrored, not reduced_effects, haptics.enabled][i]
 		var value := ("오른쪽" if mirrored else "왼쪽") if i == 2 else ("켜짐" if active else "꺼짐")
 		_button(overlay, value, Rect2(395, y + 1, 84, 30), _toggle_setting.bind(["music", "sound", "mirrored", "effects", "haptics"][i]), active)
@@ -685,7 +698,7 @@ func _show_cats() -> void:
 	hud.visible = false
 	_clear_overlay()
 	_panel(overlay, Rect2(0, 0, 640, 360), GameSkin.BASE, 0)
-	_label(overlay, "골목의 작은 상점", Vector2(25, 18), 25)
+	_cell_label(overlay, "골목의 작은 상점", Rect2(25, 18, 480, 44), 25)
 	_chip(overlay, ("테스트 토큰  " if shop.preview else "보유 토큰  ") + str(collection.tokens), Rect2(26, 57, 150, 25))
 	_button(overlay, "돌아가기", Rect2(520, 23, 94, 34), _show_menu)
 	for tab in 3:
@@ -723,10 +736,10 @@ func _show_cosmetics() -> void:
 			preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			overlay.add_child(preview)
-		_label(overlay, AlleyTheme.NAMES[id] if background else CatPixel.NAMES[id], Vector2(x + 10, 213), 12 if background else 17)
+		_cell_label(overlay, AlleyTheme.NAMES[id] if background else CatPixel.NAMES[id], Rect2(x + 10, 208, 118, 31), 12 if background else 17)
 		var owned := (collection.themes if background else collection.unlocked).has(id)
 		var selected := id == (collection.selected_theme if background else collection.selected)
-		_label(overlay, ("선택한 배경" if selected else "보유 중" if owned else "잠긴 배경") if background else "기본 무기: " + NightContent.SHORT[NightContent.CAT_STARTERS[id]], Vector2(x + 10, 241), 9, GameSkin.MUTED)
+		_cell_label(overlay, ("선택한 배경" if selected else "보유 중" if owned else "잠긴 배경") if background else "기본 무기: " + NightContent.SHORT[NightContent.CAT_STARTERS[id]], Rect2(x + 10, 239, 118, 25), 9, GameSkin.MUTED)
 		var price: int = CatCollection.THEME_PRICES[id] if background else CatCollection.PRICES[id]
 		var button := _button(overlay, "선택됨" if selected else "선택하기" if owned else "%d 토큰 · 구매" % price, Rect2(x + 10, 268, 118, 27), _cat_action.bind(id, background), selected)
 		button.disabled = selected or shop.busy
@@ -736,8 +749,8 @@ func _show_token_packs() -> void:
 	for index in 3:
 		var x := 26 + index * 198
 		_panel(overlay, Rect2(x, 142, 188, 135), GameSkin.SURFACE, 14)
-		_label(overlay, "%d 토큰" % CatCollection.PACKS[index], Vector2(x + 18, 158), 24)
-		_label(overlay, "고양이 · 배경 공용", Vector2(x + 18, 197), 11, GameSkin.MUTED)
+		_cell_label(overlay, "%d 토큰" % CatCollection.PACKS[index], Rect2(x + 18, 151, 152, 43), 24)
+		_cell_label(overlay, "고양이 · 배경 공용", Rect2(x + 18, 194, 152, 28), 11, GameSkin.MUTED)
 		var button := _button(overlay, "가상 구매 · 무료 테스트" if shop.preview else "결제 준비 중", Rect2(x + 12, 230, 164, 32), _buy_tokens.bind(index), shop.preview)
 		button.disabled = not shop.preview or shop.busy
 	_button(overlay, "구매 내역 새로고침", Rect2(26, 284, 160, 28), _refresh_shop)
@@ -779,7 +792,7 @@ func _page(title_text: String, page_state: String) -> void:
 	hud.hide()
 	_clear_overlay()
 	_panel(overlay, Rect2(0, 0, 640, 360), GameSkin.BASE, 0)
-	_label(overlay, title_text, Vector2(26, 20), 25)
+	_cell_label(overlay, title_text, Rect2(26, 15, 480, 44), 25)
 	var back := _button(overlay, "돌아가기", Rect2(522, 20, 94, 34), _show_menu)
 	back.z_index = 20
 
@@ -792,11 +805,11 @@ func _show_stages() -> void:
 	for index in 3:
 		var x := 26 + index * 198
 		_panel(overlay, Rect2(x, 110, 188, 198), GameSkin.SURFACE, 14)
-		_label(overlay, "0%d / %d분 산책" % [index + 1, int(NightContent.DURATIONS[index] / 60)], Vector2(x + 14, 126), 11, GameSkin.MINT)
-		_label(overlay, NightContent.STAGES[index], Vector2(x + 14, 153), 16)
-		var note := _label(overlay, ["낮은 담장과 상자 사이\\n가까운 괴이부터 익혀요", "긴 화단 사이로 유인\\n가로·세로 깃털길을 피해요", "좌판 사이의 좁은 골목\\n회전 탄막의 틈을 찾아요"][index].replace("\\n", "\n"), Vector2(x + 14, 186), 11, GameSkin.MUTED)
+		_cell_label(overlay, "0%d / %d분 산책" % [index + 1, int(NightContent.DURATIONS[index] / 60)], Rect2(x + 14, 120, 160, 26), 11, GameSkin.MINT)
+		_cell_label(overlay, NightContent.STAGES[index], Rect2(x + 14, 146, 160, 34), 16)
+		var note := _cell_label(overlay, ["낮은 담장과 상자 사이\\n가까운 괴이부터 익혀요", "긴 화단 사이로 유인\\n가로·세로 깃털길을 피해요", "좌판 사이의 좁은 골목\\n회전 탄막의 틈을 찾아요"][index].replace("\\n", "\n"), Rect2(x + 14, 180, 160, 48), 11, GameSkin.MUTED)
 		note.size = Vector2(160, 50)
-		_label(overlay, NightContent.BOSSES[index], Vector2(x + 14, 235), 11)
+		_cell_label(overlay, NightContent.BOSSES[index], Rect2(x + 14, 228, 160, 30), 11)
 		var button := _button(overlay, "다시 산책" if progress.cleared.has(index) else "산책 시작" if progress.stage_open(index) else "이전 골목을 완료하세요", Rect2(x + 10, 266, 168, 30), _begin_stage.bind(index), progress.stage_open(index))
 		button.disabled = not progress.stage_open(index)
 	_label(overlay, CatPixel.NAMES[collection.selected] + " · 기본 무기: " + WEAPON_NAMES[NightContent.CAT_STARTERS[collection.selected]], Vector2(26, 326), 11, GameSkin.MUTED)
@@ -829,8 +842,8 @@ func _show_shelter() -> void:
 		for index in 4:
 			var at := Vector2(276 + (index % 2) * 173, 106 + int(index / 2) * 101)
 			_panel(overlay, Rect2(at, Vector2(164, 93)), GameSkin.SURFACE, 12)
-			_label(overlay, NightContent.FURNITURE[index], at + Vector2(10, 8), 12)
-			_label(overlay, NightContent.WEAPONS[index + 4] + " 사용 가능", at + Vector2(10, 31), 10, GameSkin.MUTED)
+			_cell_label(overlay, NightContent.FURNITURE[index], Rect2(at + Vector2(10, 3), Vector2(144, 27)), 12)
+			_cell_label(overlay, NightContent.WEAPONS[index + 4] + " 사용 가능", Rect2(at + Vector2(10, 30), Vector2(144, 23)), 10, GameSkin.MUTED)
 			var owned := progress.furniture.has(index)
 			var button := _button(overlay, "쉼터에 있어요" if owned else "간식 %d개 · 구매" % NightContent.FURNITURE_COST[index], Rect2(at + Vector2(8, 57), Vector2(148, 28)), _furnish.bind(index))
 			button.disabled = owned or progress.memories < NightContent.FURNITURE_COST[index]
@@ -838,17 +851,17 @@ func _show_shelter() -> void:
 		for index in 8:
 			var at := Vector2(26 + (index % 4) * 150, 107 + int(index / 4) * 102)
 			_panel(overlay, Rect2(at, Vector2(140, 94)), GameSkin.SURFACE, 12)
-			_label(overlay, NightContent.SHORT[index], at + Vector2(10, 7), 14)
-			_label(overlay, ["관통", "경로", "연쇄", "공포", "이동 미끼", "벽 반사", "멈춤·기습", "끌어모으기"][index], at + Vector2(10, 33), 10, GameSkin.MUTED)
+			_cell_label(overlay, NightContent.SHORT[index], Rect2(at + Vector2(10, 3), Vector2(120, 28)), 14)
+			_cell_label(overlay, ["관통", "경로", "연쇄", "공포", "이동 미끼", "벽 반사", "멈춤·기습", "끌어모으기"][index], Rect2(at + Vector2(10, 31), Vector2(120, 25)), 10, GameSkin.MUTED)
 			var owned := progress.available_weapons().has(index)
-			_label(overlay, "레벨 업 때 획득 가능" if owned else "쉼터 꾸미기로 사용 가능", at + Vector2(10, 65), 10, GameSkin.MINT if owned else GameSkin.MUTED)
+			_cell_label(overlay, "레벨 업 때 획득 가능" if owned else "쉼터 꾸미기로 사용 가능", Rect2(at + Vector2(10, 59), Vector2(120, 29)), 10, GameSkin.MINT if owned else GameSkin.MUTED)
 	else:
 		for index in 3:
 			var y := 112 + index * 64
 			_panel(overlay, Rect2(26, y, 588, 55), GameSkin.SURFACE, 10)
 			var found := progress.clues.has(index)
-			_label(overlay, NightContent.CLUES[index] if found else "아직 찾지 못한 단서", Vector2(40, y + 7), 14)
-			_label(overlay, NightContent.CLUE_NOTES[index] if found else NightContent.STAGES[index] + "에서 흔적을 찾아보세요.", Vector2(40, y + 31), 11, GameSkin.MUTED)
+			_cell_label(overlay, NightContent.CLUES[index] if found else "아직 찾지 못한 단서", Rect2(40, y + 3, 560, 25), 14)
+			_cell_label(overlay, NightContent.CLUE_NOTES[index] if found else NightContent.STAGES[index] + "에서 흔적을 찾아보세요.", Rect2(40, y + 28, 560, 24), 11, GameSkin.MUTED)
 	_label(overlay, "간식은 플레이로만 모아요 · 유료 토큰과 별개 · 생존 90초마다 1개 · 기본 보상 최대 8개" if saved else "기록 저장에 실패했어요. 저장 공간을 확인한 뒤 쉼터를 다시 열어주세요.", Vector2(26, 327), 10, GameSkin.MUTED)
 
 func _shelter_tab(tab: int) -> void:
