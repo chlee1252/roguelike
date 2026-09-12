@@ -5,3 +5,6 @@
 *.keystore
 *.jks
 export_credentials.cfg
+
+__pycache__/
+*.db
