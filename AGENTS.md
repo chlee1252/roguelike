@@ -21,6 +21,14 @@ Follow existing Godot conventions: tabs for GDScript indentation, `snake_case` f
 
 Name GDScript suites `tests/<feature>_test.gd`. They extend `SceneTree`, report failures with `push_error`, exit nonzero on failure, and print a unique `*_TEST_OK` marker consumed by `scripts/test-game.sh`. Add regression coverage for behavior changes and run the full headless suite before opening a pull request. For UI or rendering changes, also run `--render` and review artifacts in `build/`.
 
+## Release Checklist SSOT
+
+Use [docs/release-checklist.md](docs/release-checklist.md) as the single source of truth for pre-release scope, priorities, task status, blockers, and completion evidence. Read it before work affecting release readiness, including gameplay, progression, saves, payments, device quality, and deployment. Identify the relevant task IDs and update their status, evidence, and the document's last-updated date in the same change as the work. Add newly discovered release tasks there with stable IDs; do not maintain competing checklists elsewhere.
+
+Mark a task complete only after its implementation and required verification are finished, and record the completion date and links to code, tests, or validation results. Keep blocked tasks unchecked with the blocker and next action. Reopen tasks when regressions appear. Automated tests do not substitute for human playtests, physical-device checks, or live store integration. Record scope-based deferrals and non-applicable tasks with a dated rationale instead of deleting them or marking them complete. The checklist does not itself authorize deployment or external account changes.
+
+Keep responsibilities distinct: [docs/storyboard.md](docs/storyboard.md) owns story, art, and copy direction; [docs/level-design.md](docs/level-design.md) owns map and progression rules; [docs/game-validation.md](docs/game-validation.md) holds validation evidence. Link those documents from the release checklist rather than duplicating their content. Resolve conflicting readiness claims against the checklist and actual implementation/verification evidence.
+
 ## Commit & Pull Request Guidelines
 
 History follows Conventional Commit subjects such as `feat:`, `fix:`, and `docs:`. Use an imperative, specific summary and keep each commit scoped to one concern. Pull requests should explain player-visible and technical effects, list verification commands, link relevant issues or design documents, and include screenshots for UI changes. Never commit `.godot/`, build outputs, signing files, keystores, local databases, tokens, or Apple team credentials.
