@@ -14,9 +14,18 @@ func _run() -> void:
 	for tab in 3:
 		game._change_shop_tab(tab)
 		await _capture("shop-" + str(tab))
+	game._show_stages()
+	await _capture("stage-selection")
+	game.progress.memories = 20
+	game.progress.furniture.assign([0, 1, 2, 3])
+	game.progress.clues.assign([0, 1, 2])
+	game.progress.cleared.assign([0, 1, 2])
+	for tab in 3:
+		game._shelter_tab(tab)
+		await _capture("shelter-" + str(tab))
 	game.start_run()
 	game.battle.god_mode = true
-	game.battle.weapons.assign([4, 4, 4])
+	game.battle.weapons.assign([4, 4, 4, 0, 0, 0, 0, 0])
 	game.battle.elapsed = 365
 	for i in 65:
 		game.battle.spawn_enemy(i % 6, game.battle.player + Vector2.from_angle(i * 2.4) * (50 + i * 3))
@@ -64,6 +73,24 @@ func _run() -> void:
 	game.battle.victory = false
 	game._show_results()
 	await _capture("results")
+	for stage in 3:
+		game.selected_stage = stage
+		game.start_run()
+		game.battle.god_mode = true
+		game.battle.elapsed = NightContent.BOSS_AT[stage] + 0.1
+		game.battle.weapons.assign([0, 0, 0, 6, 6, 0, 6, 6])
+		game.battle.spawn_enemy(7, game.battle.player + Vector2(100, -10))
+		game.battle._add_lure(game.battle.player + Vector2(60, 30), 1, 3)
+		game.battle._add_lure(game.battle.player + Vector2(-60, 20), 0, 3)
+		game.battle._add_lure(game.battle.player + Vector2(20, 55), 2, 3)
+		game.battle._rebuild_grid()
+		for frame in 30:
+			game.battle.step(1.0 / 60, Vector2.ZERO)
+		game._update_hud(0)
+		game.field.queue_redraw()
+		await _capture("region-" + str(stage))
+		game._show_story()
+		await _capture("story-" + str(stage))
 	game._clear_save()
 	game.audio.silence()
 	await create_timer(0.1).timeout

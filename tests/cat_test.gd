@@ -8,7 +8,7 @@ func check(value: bool, message: String) -> void:
 
 func _initialize() -> void:
 	var trail := Battle.new(18)
-	trail.weapons.assign([1, 1, 0])
+	trail.weapons.assign([1, 1, 0, 0, 0, 0, 0, 0])
 	trail._weapons(0.1)
 	check(trail.fur_patches.is_empty(), "Stationary cat must not generate a movement trail")
 	trail.moving = true
@@ -18,7 +18,7 @@ func _initialize() -> void:
 	trail._weapons(0.5)
 	check(trail.fur_patches.size() == 1, "Stopping must stop new fur patches")
 	var bounce := Battle.new(8)
-	bounce.weapons.assign([1, 0, 1])
+	bounce.weapons.assign([1, 0, 1, 0, 0, 0, 0, 0])
 	bounce.cap_clock = 0
 	bounce.paw_clock = 100
 	for x in [120, 155, 185]:

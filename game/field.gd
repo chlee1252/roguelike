@@ -24,6 +24,7 @@ func _draw() -> void:
 		return
 	var shift := Vector2(320, 180) - battle.camera()
 	_ground(shift)
+	_night_objects(shift)
 	var visible_rect := Rect2(-45, -45, 730, 450)
 	for object in battle.landmarks:
 		var at: Vector2 = object.at + shift
@@ -68,6 +69,9 @@ func _draw() -> void:
 			draw_circle(at, 4, Color(0.78, 0.87, 0.98, 0.10))
 			draw_rect(Rect2(at, Vector2(2, 3)), Color("c8e4f5"))
 			draw_rect(Rect2(at + Vector2(-2, -2), Vector2(1, 1)), Color("ecf2ff"))
+		elif kind >= 4:
+			draw_circle(at, 10, Color(0.9, 0.8, 0.5, 0.15))
+			_text(["", "", "", "", "밥", "풀", "봉", "담", "·"][kind], at + Vector2(-5, 3), 10, Color("f7d69e"))
 		else:
 			draw_circle(at, 10, Color(0.92, 0.72, 0.4, 0.10))
 			var tint := Color("f1c995") if kind == 1 else Color("eba9ac") if kind == 2 else Color("9abecb")
@@ -109,6 +113,9 @@ func _draw() -> void:
 						draw_line(base - side * 3, base + side * 3, Color("fff0cc"), 1)
 					draw_circle(at + direction * 7, 3, Color("fff0cc"))
 					draw_circle(at + direction * 8 - side, 1, Color("705775"))
+				elif pool.kind[i] == 5:
+					draw_circle(at, 4, Color("abd9d1"))
+					draw_circle(at, 2, Color("426b73"), false, 1)
 				else:
 					draw_circle(at, 5, Color("e8acbf"))
 					draw_arc(at, 3, battle.elapsed * 12, battle.elapsed * 12 + PI, 8, Color("fae6bc"), 2)
@@ -125,7 +132,7 @@ func _draw() -> void:
 			for n in 3:
 				draw_arc(at + Vector2(n * 3 - 3, 0), effect.radius * (0.7 + phase * 0.3), battle.aim.angle() - 0.6, battle.aim.angle() + 0.6, 12, Color(0.86, 0.97, 0.85, 1 - phase), 2)
 		else:
-			var tint := Color("f4bfba") if effect.kind == 1 else Color("b5dccf")
+			var tint := Color("f4bfba") if effect.kind == 1 else Color("ead5ad") if effect.kind == 4 else Color("b5dccf")
 			draw_arc(at, effect.radius * (0.2 + phase), 0, TAU, 20, Color(tint, 1 - phase), 1)
 			for n in 7:
 				var point: Vector2 = at + Vector2.from_angle(n * 2.4) * effect.radius * phase + Vector2(0, -phase * 12)
@@ -143,6 +150,9 @@ func _cat(at: Vector2) -> void:
 	if battle.paw_clock > paw_interval - 0.16:
 		draw_rect(Rect2(9, -2, 4, 3), [CatPixel.COAT, Color("625e68"), Color("f2e6d1"), Color("f6f0e5")][cat_variant])
 	draw_set_transform(Vector2.ZERO)
+	if battle.ambush_charge > 0.2:
+		draw_rect(Rect2(at + Vector2(-13, -4), Vector2(26, 10)), Color("b89370"))
+		_text("웅크리기…", at + Vector2(-19, -30), 8, Color("f0c5a0"))
 	if battle.hidden:
 		_text("쉿…", at + Vector2(-8, -24), 9, Color("e5d4b3"))
 	if battle.food_boost > 0:
@@ -150,7 +160,10 @@ func _cat(at: Vector2) -> void:
 
 func _ghost(id: int, at: Vector2) -> void:
 	var kind := battle.enemies.kind[id]
-	var radius: float = Battle.ENEMY_RADIUS[kind]
+	var is_boss := kind == 7
+	if is_boss and battle.stage_id > 0:
+		kind = 5 if battle.stage_id == 1 else 4
+	var radius: float = Battle.ENEMY_RADIUS[7 if is_boss else kind]
 	var bob := sin(battle.elapsed * 4 + id) * 1.5
 	var body := at + Vector2(0, -5 + bob)
 	var scale_value := maxf(0.85, radius / 10.0)
@@ -204,7 +217,9 @@ func _ghost(id: int, at: Vector2) -> void:
 	draw_set_transform(Vector2.ZERO)
 	if battle.elite_ids.has(id):
 		draw_arc(body, radius + 6, 0, TAU, 24, Color("e8d3a5"), 1)
-	if battle.enemies.mode[id] == 1:
+	if battle.enemies.fear[id] > 0:
+		_text("!", at + Vector2(-3, -radius - 8), 13, Color("f1d89d"))
+	if kind == 2 and battle.enemies.mode[id] == 1:
 		draw_line(at, battle.enemies.target[id] + Vector2(320, 180) - battle.camera(), Color("ffa0b3"), 1)
 
 func _text(value: String, at: Vector2, size: int, tint: Color) -> void:
@@ -221,42 +236,70 @@ func _ground(shift: Vector2) -> void:
 			if hash_value == 0:
 				draw_style_box(GameSkin.box(Color("6b6380"), 4), Rect2(at + Vector2(11, 27), Vector2(32, 9)))
 				draw_line(at + Vector2(17, 29), at + Vector2(33, 29), Color("9a89a5"))
-	# Building edges sit outside the open central alley, with readable crossing gaps.
-	for x in range(0, 2400, 320):
-		for y in range(0, 1600, 320):
-			var at := Vector2(x, y) + shift
-			if not Rect2(-170, -100, 980, 560).has_point(at):
-				continue
-			draw_rect(Rect2(at, Vector2(116, 55)), Color(AlleyTheme.WALL[theme_id]))
-			draw_rect(Rect2(at + Vector2(0, 2), Vector2(116, 8)), Color(AlleyTheme.ROOF[theme_id]))
-			for n in 3:
-				draw_rect(Rect2(at + Vector2(12 + n * 32, 19), Vector2(18, 22)), Color("b18e71") if n == 1 else Color("887993"))
-				draw_line(at + Vector2(20 + n * 32, 19), at + Vector2(20 + n * 32, 41), Color("252d43"), 2)
-			draw_rect(Rect2(at + Vector2(120, 10), Vector2(27, 21)), Color("5d6675"))
-			for n in 5:
-				draw_line(at + Vector2(124, 13 + n * 3), at + Vector2(141, 13 + n * 3), Color("333e51"))
-			if theme_id == 1:
-				draw_rect(Rect2(at + Vector2(86, 53), Vector2(5, 17)), Color("8c7180"))
-				for petal in [Vector2(80, 47), Vector2(91, 43), Vector2(101, 49)]:
-					draw_circle(at + petal, 11, Color("af819b"))
-			elif theme_id == 2:
-				draw_style_box(GameSkin.box(Color("3e617a"), 6), Rect2(at + Vector2(60, 66), Vector2(54, 10)))
-				draw_line(at + Vector2(71, 70), at + Vector2(101, 70), Color("67969f"))
-			elif theme_id == 3:
-				draw_style_box(GameSkin.box(Color("a8becf"), 5), Rect2(at + Vector2(3, 54), Vector2(100, 6)))
-			var lamp := at + Vector2(162, 60)
-			draw_circle(lamp, 33, Color(0.94, 0.73, 0.46, 0.045))
-			draw_circle(lamp, 22, Color(0.94, 0.73, 0.46, 0.06))
-			draw_line(lamp - Vector2(0, 35), lamp, Color("62687b"), 2)
-			draw_rect(Rect2(lamp - Vector2(5, 37), Vector2(10, 4)), Color("efd5a2"))
-	var store := Battle.WORLD * 0.5 + Vector2(105, -112) + shift
-	draw_rect(Rect2(store, Vector2(128, 56)), Color("756881"))
-	draw_rect(Rect2(store + Vector2(0, -15), Vector2(128, 16)), Color(AlleyTheme.ACCENT[theme_id]))
-	_text("달빛 편의점  ·  24", store + Vector2(12, -3), 10, Color("efe0bf"))
-	for n in 4:
-		draw_rect(Rect2(store + Vector2(6 + n * 30, 7), Vector2(25, 43)), Color("898e91"))
-		draw_rect(Rect2(store + Vector2(9 + n * 30, 10), Vector2(19, 34)), Color("ddc69e"))
-	_text("해솔빌라  골목 03", Battle.WORLD * 0.5 + Vector2(-125, -86) + shift, 10, Color("7c8ba2"))
+	for obstacle in battle.obstacles:
+		var at := obstacle.position + shift
+		if not Rect2(-200, -180, 1040, 720).has_point(at):
+			continue
+		if battle.stage_id == 1:
+			draw_style_box(GameSkin.box(Color("637b78"), 8), Rect2(at, obstacle.size))
+			draw_style_box(GameSkin.box(Color("81998a"), 8), Rect2(at + Vector2(6, 6), obstacle.size - Vector2(12, 12)))
+			for flower in 5:
+				draw_circle(at + Vector2(18 + (flower % 2) * 31, 18 + flower * 19), 5, Color("c7b5bd"))
+		else:
+			draw_rect(Rect2(at, obstacle.size), Color(AlleyTheme.WALL[theme_id]))
+			draw_rect(Rect2(at, Vector2(obstacle.size.x, 9)), Color(AlleyTheme.ROOF[theme_id]))
+			if battle.stage_id == 2:
+				for stripe in int(obstacle.size.x / 18):
+					draw_rect(Rect2(at + Vector2(stripe * 18, 0), Vector2(9, 15)), Color("bc9b9c"))
+				for box in 4:
+					draw_rect(Rect2(at + Vector2(12 + box * 38, 24), Vector2(28, 25)), Color("9d826f"))
+					draw_circle(at + Vector2(24 + box * 38, 30), 5, Color("cdb48b"))
+			else:
+				for window in 3:
+					draw_rect(Rect2(at + Vector2(12 + window * 32, 19), Vector2(18, 22)), Color("b18e71") if window == 1 else Color("887993"))
+					draw_line(at + Vector2(20 + window * 32, 19), at + Vector2(20 + window * 32, 41), Color("252d43"), 2)
+			if theme_id == 3:
+				draw_style_box(GameSkin.box(Color("b9ccd9"), 4), Rect2(at + Vector2(2, -2), Vector2(obstacle.size.x - 4, 6)))
+		var lamp := at + Vector2(obstacle.size.x + 32, 65)
+		draw_circle(lamp, 27, Color(0.94, 0.73, 0.46, 0.06))
+		draw_line(lamp - Vector2(0, 35), lamp, Color("747588"), 2)
+		draw_rect(Rect2(lamp - Vector2(5, 37), Vector2(10, 4)), Color("efd5a2"))
+		if theme_id == 1:
+			for petal in 3:
+				draw_circle(at + Vector2(-8 + petal * 10, 8 - (petal % 2) * 8), 9, Color("b68b9f"))
+		elif theme_id == 2:
+			draw_style_box(GameSkin.box(Color("45647b"), 6), Rect2(at + Vector2(12, obstacle.size.y + 8), Vector2(60, 8)))
+	var center := Battle.WORLD * 0.5 + shift
+	if battle.stage_id == 0:
+		draw_rect(Rect2(center + Vector2(100, -132), Vector2(138, 16)), Color(AlleyTheme.ACCENT[theme_id]))
+		_text("달빛 편의점 24", center + Vector2(112, -120), 10, Color("fff0d3"))
+	elif battle.stage_id == 1:
+		draw_line(center + Vector2(85, -90), center + Vector2(105, -130), Color("a59a9b"), 3)
+		draw_line(center + Vector2(145, -90), center + Vector2(125, -130), Color("a59a9b"), 3)
+		draw_line(center + Vector2(105, -130), center + Vector2(125, -130), Color("a59a9b"), 3)
+		draw_line(center + Vector2(115, -126), center + Vector2(115, -100), Color("bfac99"), 1)
+		draw_rect(Rect2(center + Vector2(105, -100), Vector2(22, 4)), Color("c7afa3"))
+	else:
+		_text("별빛시장 · 밤에도 따뜻한 자리", center + Vector2(-90, -85), 12, Color("dac799"))
 	draw_rect(Rect2(shift, Battle.WORLD), Color("606c86"), false, 3)
 
 	AlleyTheme.decorate(self, theme_id, Rect2(0, 0, 640, 360), battle.elapsed)
+
+func _night_objects(shift: Vector2) -> void:
+	for lure in battle.lures:
+		var at: Vector2 = lure.at + shift
+		if lure.kind == 2:
+			draw_style_box(GameSkin.box(Color("a9a2ba"), 7), Rect2(at - Vector2(38, 27), Vector2(76, 54)))
+			_text("잠깐 쉬어도 괜찮아", at + Vector2(-33, -32), 8, Color("dfd9d2"))
+		elif lure.kind == 1:
+			draw_circle(at, 55, Color(0.7, 0.84, 0.77, 0.1))
+			draw_circle(at, 6, Color("eccb8f"))
+			draw_line(at + Vector2(-3, 1), at + Vector2(3, 1), Color("735f72"), 1)
+		else:
+			draw_colored_polygon(PackedVector2Array([at + Vector2(-7, 5), at + Vector2(-4, -8), at + Vector2(6, -6), at + Vector2(8, 5)]), Color("bad6d0"))
+			_text("바스락", at + Vector2(-12, -12), 8, Color("cce3d8"))
+	if battle.clue_at != Vector2.ZERO and not battle.clue_found:
+		var at := (battle.clue_at + shift).clamp(Vector2(30, 90), Vector2(610, 302))
+		draw_circle(at, 12, Color("f2d49d"), false, 1)
+		_text("발자국", at + Vector2(-12, 3), 8, Color("f2d49d"))
+		_text(NightContent.CLUES[battle.stage_id], at + Vector2(-32, 24), 9, Color("eee0c2"))

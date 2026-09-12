@@ -51,7 +51,7 @@ func _run() -> void:
 		if sim.finished:
 			break
 	check(sim.finished and sim.victory and sim.fired_events.has("boss_defeated"), "Full run must defeat its stage boss")
-	check(sim.fired_events.has(840), "Final boss event must occur")
+	check(sim.fired_events.has(NightContent.BOSS_AT[sim.stage_id]), "Final boss event must occur")
 	check(sim.level >= 15, "XP economy must provide substantial upgrades")
 	check(sim.evolved.has(true), "Normal XP and cache progression must allow an evolution")
 	check(max_enemies <= 500 and max_hostile <= 600, "Entity caps must hold across the entire run")
@@ -85,9 +85,9 @@ func _stress() -> void:
 	var sim := Battle.new(11)
 	sim.god_mode = true
 	sim.elapsed = 500
-	sim.weapons.assign([6, 6, 6])
-	sim.supports.assign([2, 2, 2])
-	sim.evolved.assign([true, true, true])
+	sim.weapons.assign([6, 6, 6, 0, 0, 0, 0, 0])
+	sim.supports.assign([2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+	sim.evolved.assign([true, true, true, false, false, false, false, false])
 	for i in 500:
 		var id := sim.spawn_enemy(i % 6, sim.player + Vector2.from_angle(i * 2.4) * (30 + i % 260))
 		sim.enemies.health[id] = 100000

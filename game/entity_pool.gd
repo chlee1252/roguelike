@@ -9,6 +9,7 @@ var health := PackedFloat32Array()
 var kind := PackedInt32Array()
 var timer := PackedFloat32Array()
 var aux := PackedFloat32Array()
+var fear := PackedFloat32Array()
 var residue := PackedFloat32Array()
 var generation := PackedInt32Array()
 var mode := PackedInt32Array()
@@ -25,6 +26,7 @@ func _init(size: int = 500) -> void:
 	kind.resize(size)
 	timer.resize(size)
 	aux.resize(size)
+	fear.resize(size)
 	residue.resize(size)
 	generation.resize(size)
 	mode.resize(size)
@@ -43,6 +45,7 @@ func spawn(at: Vector2, type: int, hp: float, motion := Vector2.ZERO, life := 0.
 	kind[id] = type
 	timer[id] = life
 	aux[id] = 0.0
+	fear[id] = 0.0
 	residue[id] = 0.0
 	mode[id] = 0
 	target[id] = Vector2.ZERO
@@ -60,7 +63,7 @@ func release(id: int) -> void:
 func snapshot() -> Dictionary:
 	return {"alive": alive, "position": position, "velocity": velocity,
 		"health": health, "kind": kind, "timer": timer, "aux": aux,
-		"residue": residue, "generation": generation, "mode": mode, "target": target, "free": free, "count": count}
+		"fear": fear, "residue": residue, "generation": generation, "mode": mode, "target": target, "free": free, "count": count}
 
 func restore(data: Dictionary) -> void:
 	alive = data.alive
@@ -70,6 +73,7 @@ func restore(data: Dictionary) -> void:
 	kind = data.kind
 	timer = data.timer
 	aux = data.aux
+	fear = data.fear
 	residue = data.residue
 	generation = data.generation
 	mode = data.mode

@@ -36,8 +36,8 @@ func _initialize() -> void:
 	sim.step(1, Vector2.ONE)
 	check(sim.elapsed == paused_time, "Level-up must freeze simulation")
 	sim.pending_levels = 0
-	sim.weapons = [6, 6, 6]
-	sim.supports = [2, 2, 2]
+	sim.weapons = [6, 6, 6, 0, 0, 0, 0, 0]
+	sim.supports = [2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 	sim.caches.append(sim.player)
 	sim._collect(0)
 	check(sim.evolved[0] and sim.caches.is_empty(), "Eligible cache must evolve exactly one weapon")
