@@ -234,3 +234,7 @@ Pretendard 한글 폰트를 포함하고 메뉴, HUD, 장비 선택, 설정, 일
 - 실기기 전용 `iOS Device` 프리셋을 추가했다. `build/ios-device/CatWalk.xcodeproj`를 iPhoneOS ARM64 대상으로 서명 없이 컴파일하여 `BUILD SUCCEEDED`를 확인했다. 생성 앱의 CFBundleDisplayName과 CFBundleIdentifier도 새 값이다. 이는 설치 가능한 서명 앱의 검증과는 다르다.
 - USB로 연결된 iPhone 17 Pro(iOS 26.6.2)를 페어링했다. 확인 시 개발자 모드는 꺼져 있었다. 자동 서명 시 Apple이 `PLA Update available` 오류로 최신 개발자 계정 약관 동의를 요구해 새 앱 프로비저닝 프로파일을 발급받지 못했다. 기기 설정과 계정 약관 동의는 사용자에게 요청한 상태이며 이 기록 시점에는 설치·실행을 완료하지 못했다.
 - `scripts/install-iphone.sh <UDID> <TEAM_ID>`로 최신 내보내기·기기별 서명·설치·실행을 반복할 수 있다. 셸 구문 검사를 통과했다. 실제 서명/설치 전체 경로는 위 외부 조건 해소 후 검증해야 한다. 개인 계정 정보나 인증서는 저장소에 추가하지 않았다.
+
+## 2026-09-12 — 표시 제목 복원
+
+사용자 요청으로 표시 제목을 다시 **골목의 밤냥**으로 변경했다. 프로젝트·빌드 파일명 `CatWalk`과 앱 식별자 `com.marc.catwalk`는 유지한다. 실제 메뉴 렌더링 `VISUAL_TEST_OK`, Android APK의 표시 이름, iOS 실기기용 Xcode 프로젝트의 표시 이름을 확인했다. iPhone 서명·설치에 필요한 외부 조건은 이전 기록과 동일하며 이번 제목 변경으로 설치 완료를 의미하지 않는다.
