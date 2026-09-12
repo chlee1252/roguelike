@@ -29,6 +29,10 @@ func _draw() -> void:
 		shift += Vector2(sin(battle.elapsed * 71), cos(battle.elapsed * 59)) * impact
 	_ground(shift)
 	_night_objects(shift)
+	if battle.fired_events.get("boss_at") is Vector2 and battle.elapsed < NightContent.BOSS_AT[battle.stage_id]:
+		var marker: Vector2 = (battle.fired_events.boss_at + shift).clamp(Vector2(36, 112), Vector2(604, 296))
+		draw_arc(marker, 24, 0, TAU, 32, Color("f594a0"), 2)
+		_text("보스 %d초" % ceili(NightContent.BOSS_AT[battle.stage_id] - battle.elapsed), marker + Vector2(-22, -30), 11, Color("f594a0"))
 	var visible_rect := Rect2(-45, -45, 730, 450)
 	for object in battle.landmarks:
 		var at: Vector2 = object.at + shift
@@ -50,7 +54,7 @@ func _draw() -> void:
 					draw_circle(at + Vector2(n * 3 - 6, -1), 2, Color("dbb28b"))
 				if battle.player.distance_to(object.at) < 80:
 					var eating := battle.player.distance_to(object.at) <= 22
-					var note := "체력 가득!" if eating and battle.hp >= 100 else "회복 중 · 초당 +2" if eating else "밥그릇 · 원 안에서 체력 회복"
+					var note := "체력 가득!" if eating and battle.hp >= battle.max_hp else "회복 중 · 초당 +2" if eating else "밥그릇 · 원 안에서 체력 회복"
 					_text(note, at + Vector2(-48, 35), 9, Color("a4cfbc"))
 			2:
 				draw_rect(Rect2(at - Vector2(26, 7), Vector2(52, 14)), Color("64717e"))
@@ -84,6 +88,16 @@ func _draw() -> void:
 			var tint := Color("f1c995") if kind == 1 else Color("eba9ac") if kind == 2 else Color("9abecb")
 			draw_style_box(GameSkin.box(tint, 3), Rect2(at - Vector2(6, 4), Vector2(12, 8)))
 			draw_line(at - Vector2(3, 0), at + Vector2(3, 0), Color("f8ecce"), 2)
+	for drop in battle.training_drops:
+		var at: Vector2 = drop.at + shift
+		var marker := at.clamp(Vector2(20, 108), Vector2(620, 304))
+		var tint := Color("f4b5cb") if drop.kind == 0 else Color("eacb83")
+		draw_circle(marker, 13, Color(tint, 0.15))
+		draw_rect(Rect2(marker - Vector2(7, 8), Vector2(14, 16)), Color("342b45"))
+		draw_rect(Rect2(marker - Vector2(5, 7), Vector2(10, 14)), tint)
+		draw_line(marker + Vector2(-5, -5), marker + Vector2(5, -5), Color("fff4df"), 2)
+		draw_rect(Rect2(marker + Vector2(-3, 0), Vector2(6, 4)), Color("4b4058"))
+		_text("츄르" if drop.kind == 0 else "통조림", marker + Vector2(-12, 24), 9, tint)
 	for cache in battle.caches:
 		var at: Vector2 = cache + shift
 		var marker := at.clamp(Vector2(16, 61), Vector2(624, 310))
@@ -195,60 +209,66 @@ func _cat(at: Vector2) -> void:
 
 func _ghost(id: int, at: Vector2) -> void:
 	var kind := battle.enemies.kind[id]
-	var is_boss := kind == 7
-	if is_boss and battle.stage_id > 0:
-		kind = 5 if battle.stage_id == 1 else 4
-	var radius: float = Battle.ENEMY_RADIUS[7 if is_boss else kind]
-	var bob := sin(battle.elapsed * 4 + id) * 1.5
-	var body := at + Vector2(0, -5 + bob)
-	var scale_value := maxf(0.85, radius / 10.0)
-	draw_circle(at + Vector2(0, 3), radius * 0.7, Color(0.15, 0.10, 0.22, 0.18))
-	draw_set_transform(body.round(), 0, Vector2.ONE * scale_value)
-	var outline := Color("55445f")
-	if kind in [0, 2, 7]:
-		var coat := Color("d0ae9f") if kind == 0 else Color("efcea1") if kind == 2 else Color("d7b4cf")
-		# Floppy ears, round muzzle and little paws: a puppy-shaped nuisance spirit.
-		draw_rect(Rect2(-9, -7, 18, 15), outline)
-		draw_rect(Rect2(-7, -9, 14, 19), outline)
-		draw_rect(Rect2(-8, -6, 16, 13), coat)
-		draw_rect(Rect2(-6, -8, 12, 17), coat)
+	var boss := kind == 7
+	var radius: float = Battle.ENEMY_RADIUS[kind]
+	var body := at + Vector2(0, -5 + sin(battle.elapsed * 4 + id) * 1.5)
+	draw_circle(at + Vector2(0, 3), radius * 0.7, Color(0.10, 0.08, 0.18, 0.3))
+	draw_set_transform(body.round(), 0, Vector2.ONE * maxf(0.85, radius / 10.0))
+	var ink := Color("30283f")
+	var pale := Color("d8d5ef")
+	if boss and battle.stage_id == 0:
+		# A wooden jangseung face rising out of a long alley shadow.
+		draw_rect(Rect2(-8, -17, 16, 31), ink)
+		draw_rect(Rect2(-6, -15, 12, 27), Color("98768b"))
+		draw_rect(Rect2(-10, -17, 20, 4), Color("d8b687"))
 		for side in [-1, 1]:
-			draw_rect(Rect2(side * 10 - 2, -8, 4, 10), Color("a18495"))
-			draw_rect(Rect2(side * 4 - 1, -3, 2, 3), outline)
-			draw_rect(Rect2(side * 5 - 2, 7, 4, 3), Color("f4e4d0"))
-		draw_rect(Rect2(-4, 1, 8, 5), Color("f6e7ce"))
-		draw_rect(Rect2(-1, 1, 3, 2), outline)
-		draw_rect(Rect2(0, 4, 2, 2), Color("e5a1b0"))
-		if kind == 7:
-			draw_rect(Rect2(-6, 8, 12, 2), Color("bc94b9"))
-			draw_rect(Rect2(-1, 9, 2, 3), Color("f5df9b"))
-	elif kind in [1, 5]:
-		var wing := sin(battle.elapsed * 8 + id) * 3
-		draw_rect(Rect2(-7, -7, 14, 15), Color("9290bc"))
-		draw_rect(Rect2(-5, -9, 10, 18), Color("aba6cf"))
-		draw_line(Vector2(-6, 0), Vector2(-13, -3 + wing), Color("7778a0"), 4)
-		draw_line(Vector2(6, 0), Vector2(13, -3 + wing), Color("7778a0"), 4)
+			draw_line(Vector2(side * 2, -7), Vector2(side * 6, -9), pale, 2)
+		draw_rect(Rect2(-5, 2, 10, 5), ink)
+		for tooth in 4:
+			draw_rect(Rect2(-4 + tooth * 2, 2, 1, 3), Color("e9d4b6"))
+	elif boss and battle.stage_id == 2:
+		# Horns and a broad mask distinguish the market dokkaebi.
+		draw_colored_polygon(PackedVector2Array([Vector2(-9, -4), Vector2(-10, -17), Vector2(-3, -7), Vector2(3, -7), Vector2(10, -17), Vector2(9, 8), Vector2(-9, 8)]), Color("81c1c0"))
+		draw_rect(Rect2(-7, -4, 14, 12), Color("a9ded1"))
 		for side in [-1, 1]:
-			draw_rect(Rect2(side * 3 - 1, -4, 2, 3), outline)
-			draw_rect(Rect2(side * 3 - 1, 8, 3, 2), Color("ebc090"))
-		draw_colored_polygon(PackedVector2Array([Vector2(-2, 1), Vector2(4, 1), Vector2(1, 5)]), Color("ebc090"))
+			draw_line(Vector2(side * 2, -1), Vector2(side * 6, -3), ink, 2)
+		draw_rect(Rect2(-5, 4, 10, 2), ink)
+		draw_circle(Vector2(-13, 6), 3, Color("c2eff0"))
+	elif kind in [1, 5] or boss:
+		# White sleeves and long dark hair; the park spirit sits on a swing.
+		if boss:
+			for side in [-1, 1]:
+				draw_line(Vector2(side * 10, -20), Vector2(side * 10, 11), Color("c0aac9"), 1)
+			draw_rect(Rect2(-12, 10, 24, 3), Color("b5948c"))
+		draw_colored_polygon(PackedVector2Array([Vector2(-5, -8), Vector2(5, -8), Vector2(9, 10), Vector2(2, 8), Vector2(-2, 11), Vector2(-8, 9)]), pale)
+		var sway := sin(battle.elapsed * 5 + id) * 3
+		for side in [-1, 1]:
+			draw_line(Vector2(side * 4, -2), Vector2(side * 12, 3 + sway), pale, 4)
+		draw_rect(Rect2(-6, -12, 12, 13), ink)
+		draw_rect(Rect2(-2, -8, 5, 6), Color("f1e7e4"))
+		draw_rect(Rect2(-1, -6, 1, 1), ink)
+		draw_rect(Rect2(2, -6, 1, 1), ink)
+	elif kind == 2:
+		draw_line(Vector2(0, -14), Vector2(0, 13), Color("f4c5d0"), 2)
+		draw_colored_polygon(PackedVector2Array([Vector2(0, -12), Vector2(-7, 5), Vector2(7, 5)]), Color("be799f"))
+		draw_line(Vector2(0, 13), Vector2(4, 10), Color("f4c5d0"), 2)
+		draw_circle(Vector2(0, 0), 2, pale)
 	elif kind == 3:
-		draw_rect(Rect2(-6, -5, 12, 15), Color("9cc6c5"))
-		draw_rect(Rect2(-4, -10, 8, 6), Color("d7ebe0"))
-		draw_rect(Rect2(-3, -12, 12, 3), Color("d7ebe0"))
-		draw_rect(Rect2(-4, 0, 8, 6), Color("e6e8ce"))
-		draw_rect(Rect2(-2, 1, 1, 2), outline)
-		draw_rect(Rect2(2, 1, 1, 2), outline)
+		draw_colored_polygon(PackedVector2Array([Vector2(0, -14), Vector2(3, -5), Vector2(8, -8), Vector2(7, 6), Vector2(0, 10), Vector2(-7, 5), Vector2(-5, -7)]), Color("78c7cd"))
+		draw_circle(Vector2(0, 2), 4, Color("d9faf0"))
+	elif kind in [4, 6]:
+		draw_rect(Rect2(-5, -12, 10, 5), Color("ddbd8f"))
+		draw_colored_polygon(PackedVector2Array([Vector2(-5, -7), Vector2(5, -7), Vector2(10, 3), Vector2(7, 10), Vector2(-7, 10), Vector2(-10, 3)]), Color("ac8e9d"))
+		for row in 3:
+			draw_line(Vector2(-7, row * 4 - 2), Vector2(7, row * 4 - 2), Color("ddbd8f"), 1)
+		draw_rect(Rect2(-4, -3, 2, 3), ink)
+		draw_rect(Rect2(3, -3, 2, 3), ink)
 	else:
-		# A toy-like robot vacuum, with a handle and a sleepy bumper face.
-		draw_rect(Rect2(-10, -4, 20, 12), outline)
-		draw_rect(Rect2(-8, -7, 16, 18), outline)
-		draw_rect(Rect2(-9, -3, 18, 10), Color("e2b5c4") if kind == 6 else Color("a5c8ca"))
-		draw_rect(Rect2(-7, -6, 14, 16), Color("e2b5c4") if kind == 6 else Color("a5c8ca"))
-		draw_rect(Rect2(-6, 0, 12, 5), Color("6e6b8e"))
+		draw_circle(Vector2.ZERO, 8, Color("a79abc"))
+		draw_circle(Vector2(0, 1), 6, ink)
 		for side in [-1, 1]:
-			draw_rect(Rect2(side * 3 - 1, 1, 2, 1), Color("eee7cf"))
-		draw_rect(Rect2(-3, -5, 6, 3), Color("f4d598"))
+			draw_circle(Vector2(side * 4, 8), 3, Color("867797"))
+			draw_rect(Rect2(side * 3 - 1, -2, 2, 2), pale)
 	draw_set_transform(Vector2.ZERO)
 	if battle.elite_ids.has(id):
 		draw_arc(body, radius + 6, 0, TAU, 24, Color("e8d3a5"), 1)

@@ -29,13 +29,10 @@ func _draw() -> void:
 	draw_rect(Rect2(28, 145, 26, 14), Color("49444a"))
 	if cat_texture:
 		draw_texture_rect(cat_texture, Rect2(80, 84, 96, 96), false)
-	draw_style_box(GameSkin.box(Color("d6b6a2"), 7), Rect2(204, 112, 23, 24))
-	draw_style_box(GameSkin.box(Color("aa8e9f"), 3), Rect2(201, 113, 5, 13))
-	draw_style_box(GameSkin.box(Color("aa8e9f"), 3), Rect2(225, 113, 5, 13))
-	draw_style_box(GameSkin.box(Color("f7e7cc"), 3), Rect2(211, 124, 10, 7))
-	draw_rect(Rect2(215, 125, 3, 2), Color("655069"))
-	for x in [210, 218]:
-		draw_rect(Rect2(x, 120, 2, 3), Color("383951"))
+	draw_rect(Rect2(207, 107, 19, 31), Color("292539"))
+	draw_colored_polygon(PackedVector2Array([Vector2(210, 118), Vector2(222, 118), Vector2(228, 140), Vector2(215, 137), Vector2(203, 140)]), Color("d3cce1"))
+	draw_rect(Rect2(211, 111, 11, 13), Color("292539"))
+	draw_rect(Rect2(215, 115, 5, 5), Color("f1dfd9"))
 	draw_style_box(GameSkin.box(Color("849ea0"), 3), Rect2(174, 155, 19, 8))
 	draw_line(Vector2(178, 156), Vector2(189, 156), Color("e8c494"), 2)
 

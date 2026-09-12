@@ -7,6 +7,8 @@ func _run() -> void:
 	var scene := load("res://app/game.tscn") as PackedScene
 	var game := scene.instantiate()
 	game.save_path = "user://visual-test.dat"
+	for suffix in [".progress.cfg", ".progress.cfg.pending"]:
+		DirAccess.remove_absolute(game.save_path + suffix)
 	root.add_child(game)
 	await process_frame
 	await RenderingServer.frame_post_draw
@@ -20,6 +22,17 @@ func _run() -> void:
 	game.progress.furniture.assign([0, 1, 2, 3])
 	game.progress.clues.assign([0, 1, 2])
 	game.progress.cleared.assign([0, 1, 2])
+	game.progress.training_churu = 6
+	game.progress.training_can = 1
+	game._show_training()
+	await _capture("training-ready")
+	game.progress.whisker_level = 1
+	game.progress.body_level = 1
+	game.progress.training_churu = 2
+	game.progress.training_can = 0
+	game.training_motion = 1
+	game._show_training()
+	await _capture("training-done")
 	for tab in 3:
 		game._shelter_tab(tab)
 		await _capture("shelter-" + str(tab))
@@ -94,8 +107,16 @@ func _run() -> void:
 	game._show_settings()
 	await _capture("settings")
 	game.battle.victory = true
+	game.battle.finished = true
+	game.battle.training_churu = 6
+	game.battle.training_can = 1
 	game._show_results()
 	await _capture("victory")
+	game.start_run()
+	game.battle.elapsed = 180.0
+	game.battle.training_churu = 6
+	game.battle.training_can = 1
+	game.battle.finished = true
 	game.battle.victory = false
 	game._show_results()
 	await _capture("results")
@@ -118,6 +139,7 @@ func _run() -> void:
 		game._show_story()
 		await _capture("story-" + str(stage))
 	game._clear_save()
+	DirAccess.remove_absolute(game.save_path + ".progress.cfg")
 	game.audio.silence()
 	await create_timer(0.1).timeout
 	print("VISUAL_TEST_OK")

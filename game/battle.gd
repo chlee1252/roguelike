@@ -10,7 +10,7 @@ const ENEMY_RADIUS := [8.0, 8.0, 8.0, 9.0, 20.0, 22.0, 13.0, 30.0]
 const WAVE_CAP := [55, 75, 100, 120, 145, 175, 200, 230, 260, 290, 330, 370, 410, 450, 500]
 const WAVE_RATE := [2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 10.0]
 const TITLES := ["골목이 낯설다", "꺼진 가로등", "누가 따라온다", "편의점 불빛", "상자 속 숨바꼭질", "낯선 발자국", "바스락거리는 소리", "밥그릇의 기억", "담장 너머", "유령이 가득한 골목", "빈집에서 나는 소리", "돌아오지 않는 사람", "귀가 쫑긋", "좁아지는 골목", "아침을 기다리며"]
-const ENEMY_NAMES := ["멍멍 꼬마", "깍깍 까마귀", "우다다 강아지", "칙칙 분무기", "웅웅 청소기", "까마귀 대장", "삐삐 청소대장", "멍멍 꿈대장"]
+const ENEMY_NAMES := ["그림자 발자국", "처녀귀신", "우산 괴이", "도깨비불", "망태 괴이", "긴 소매 귀신", "망태 대장", "골목 장승 그림자"]
 var enemies := EntityPool.new(500)
 var shots := EntityPool.new(400)
 var hostile := EntityPool.new(600)
@@ -20,6 +20,14 @@ var rng := RandomNumberGenerator.new()
 var player := WORLD * 0.5
 var aim := Vector2.RIGHT
 var hp := 100.0
+var max_hp := 100.0
+var whisker_level := 0
+var body_level := 0
+var training_churu := 0
+var training_can := 0
+var training_drops: Array[Dictionary] = []
+var next_training := 30.0
+var save_requested := false
 var elapsed := 0.0
 var kills := 0
 var level := 1
@@ -82,7 +90,11 @@ var clue_found := false
 var next_event := 90.0
 var last_damage := ""
 
-func configure(stage: int, challenge: int, learned: Array[int], starter := 0) -> void:
+func configure(stage: int, challenge: int, learned: Array[int], starter := 0, whiskers := 0, body := 0) -> void:
+	whisker_level = clampi(whiskers, 0, 20)
+	body_level = clampi(body, 0, 20)
+	max_hp = 100.0 + body_level * 5
+	hp = max_hp
 	stage_id = clampi(stage, 0, 2)
 	difficulty = clampi(challenge, 0, 1)
 	obstacles = NightContent.buildings(stage_id)
@@ -105,6 +117,42 @@ func open_position(at: Vector2) -> Vector2:
 			if not _building_at(candidate):
 				return candidate
 	return Vector2(1200, 800)
+
+func boss_position() -> Vector2:
+	if fired_events.get("boss_at") is Vector2:
+		return fired_events.boss_at
+	for distance in [150, 220, 300, 400]:
+		for angle in 16:
+			var candidate: Vector2 = player + Vector2.UP.rotated(angle * TAU / 16) * distance
+			if not Rect2(100, 100, WORLD.x - 200, WORLD.y - 200).has_point(candidate):
+				continue
+			var clear := true
+			for obstacle in obstacles:
+				if obstacle.grow(96).has_point(candidate):
+					clear = false
+					break
+			if clear:
+				fired_events["boss_at"] = candidate
+				return candidate
+	# Market rows leave only a narrow band with 96 units of clearance.
+	# Check the aisle centers as well so angular sampling cannot miss them.
+	var best := open_position(player + Vector2(0, -150))
+	var best_distance := INF
+	for row in obstacles:
+		var candidate := Vector2(clampf(player.x, 100, WORLD.x - 100), row.end.y + 100)
+		var distance := player.distance_squared_to(candidate)
+		if candidate.y > WORLD.y - 100 or distance < 10000 or distance >= best_distance:
+			continue
+		var clear := true
+		for obstacle in obstacles:
+			if obstacle.grow(96).has_point(candidate):
+				clear = false
+				break
+		if clear:
+			best = candidate
+			best_distance = distance
+	fired_events["boss_at"] = best
+	return best
 
 func occupied_weapon_slots() -> int:
 	return weapons.filter(func(rank: int) -> bool: return rank > 0).size()
@@ -155,7 +203,7 @@ func step(dt: float, movement: Vector2) -> void:
 	food_boost = maxf(0, food_boost - dt)
 	food_regen = maxf(0, food_regen - dt)
 	if food_regen > 0:
-		hp = minf(100, hp + 3 * dt)
+		hp = minf(max_hp, hp + 3 * dt)
 	var before_move := player
 	var desired := (player + movement.limit_length() * (120.0 if food_boost > 0 or catnip > 0 else 100.0) * (1 + supports[3] * 0.08) * dt).clamp(Vector2(20, 20), WORLD - Vector2(20, 20))
 	if not _building_at(Vector2(desired.x, player.y)):
@@ -171,6 +219,10 @@ func step(dt: float, movement: Vector2) -> void:
 	_city_objects(dt)
 	_spawn(dt)
 	_move_enemies(dt)
+	if hp <= 0 and not god_mode:
+		finished = true
+		victory = false
+		return
 	_rebuild_grid()
 	_lure_effects(dt)
 	_weapons(dt * (1.35 if catnip > 0 else 1.0))
@@ -224,7 +276,7 @@ func _spawn(dt: float) -> void:
 			if event[1] == 7 and _type_count(7) > 0:
 				fired_events[event[0]] = true
 				continue
-			var spawned := spawn_enemy(event[1], _spawn_position())
+			var spawned := spawn_enemy(event[1], boss_position() if event[1] == 7 else _spawn_position())
 			if spawned < 0:
 				continue
 			if event[1] != 7 and spawned >= 0:
@@ -327,7 +379,7 @@ func _enemy_attack(id: int, type: int, direction: Vector2) -> void:
 	if type == 2:
 		enemies.mode[id] = 1
 		enemies.target[id] = player
-		enemies.timer[id] = 0.65
+		enemies.timer[id] = 1.0
 		return
 	if type == 7 and stage_id > 0:
 		_stage_boss_attack(id)
@@ -349,7 +401,7 @@ func _enemy_attack(id: int, type: int, direction: Vector2) -> void:
 	var amount := 3 if type < 4 else 5
 	if type == 7:
 		var excited := enemies.health[id] <= boss_max_hp * 0.5
-		amount = (11 if excited else 9) + difficulty * 2
+		amount = (7 if excited else 5) + difficulty * 2
 		enemies.timer[id] = 3.2 if excited else 4.5
 	if hostile.free.size() < amount:
 		return
@@ -358,9 +410,11 @@ func _enemy_attack(id: int, type: int, direction: Vector2) -> void:
 		var angle := (n - (amount - 1) * 0.5) * (0.20 if type != 7 else 0.28)
 		var bullet := hostile.spawn(enemies.position[id], type, 8 if type < 4 else 20,
 			direction.rotated(angle) * (65 if type < 4 else 55), 7.0)
-		hostile.aux[bullet] = (0.65 if type < 4 else 1.0) * (0.85 if difficulty == 1 else 1.0)
+		hostile.aux[bullet] = (0.8 if type < 4 else 1.0) * (0.85 if difficulty == 1 else 1.0)
 	if type == 7:
 		_add_blast(player + Vector2(45, 0), 28, 20, 1.4, false, 0)
+		if enemies.health[id] <= boss_max_hp * 0.5:
+			_add_blast(player + Vector2(-45, 0), 28, 20, 2.0, false, 0)
 
 func _rebuild_grid() -> void:
 	grid.clear()
@@ -428,7 +482,7 @@ func _city_objects(dt: float) -> void:
 				in_box = true
 				hidden = not moving and hide_charge > 0
 			1:
-				hp = minf(100, hp + 2 * dt)
+				hp = minf(max_hp, hp + 2 * dt)
 			2:
 				if moving and interact_clock <= 0:
 					_add_blast(player, 55, 35, 0.25, true, 0)
@@ -600,6 +654,8 @@ func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -
 		_drop_xp(at, 30 if type >= 6 else 8 if type >= 4 else 2 if type > 0 else 1)
 		if type == 6 or elite_ids.get(id, -1) == enemies.generation[id]:
 			caches.append(open_position(at))
+			if elite_ids.get(id, -1) == enemies.generation[id]:
+				training_drops.append({"at": open_position(at + Vector2(16, 0)), "kind": 1, "amount": 1})
 			elite_ids.erase(id)
 		if type == 7:
 			finished = true
@@ -649,6 +705,19 @@ func _tick_fur(dt: float) -> void:
 				_hurt_enemy(id, 5.0 if weapons[1] >= 6 else 3.5 if weapons[1] >= 2 else 2.5, 1, false)
 
 func _collect(dt: float) -> void:
+	for i in range(training_drops.size() - 1, -1, -1):
+		var drop := training_drops[i]
+		if drop.at.distance_to(player) < 58 + supports[4] * 18:
+			drop.at = drop.at.move_toward(player, 180 * dt)
+		if drop.at.distance_to(player) < 12:
+			if drop.kind == 0:
+				training_churu += drop.amount
+			else:
+				training_can += drop.amount
+			events.append("보관용 %s +%d" % ["츄르" if drop.kind == 0 else "통조림", drop.amount])
+			training_drops.remove_at(i)
+			save_requested = true
+			_sound("pickup")
 	for i in pickups.capacity:
 		if not pickups.alive[i]:
 			continue
@@ -658,7 +727,7 @@ func _collect(dt: float) -> void:
 				pickups.release(i)
 				continue
 		var distance := pickups.position[i].distance_to(player)
-		if distance < 58 + supports[4] * 18:
+		if distance < (xp_radius() if pickups.kind[i] == 0 else 58 + supports[4] * 18):
 			pickups.position[i] = pickups.position[i].move_toward(player, 180 * dt)
 		if distance < 12:
 			if pickups.kind[i] == 0:
@@ -690,6 +759,8 @@ func eligible_evolutions() -> Array[int]:
 	return result
 
 func hurt_player(amount: float, source: String = "유령과 부딪힘") -> void:
+	if finished:
+		return
 	if invulnerable > 0 or god_mode or hidden:
 		return
 	last_damage = source
@@ -707,8 +778,11 @@ func _sound(name: String) -> void:
 	if sound_events.size() < 12 and not sound_events.has(name):
 		sound_events.append(name)
 
+func xp_radius() -> float:
+	return 58.0 * (1.0 + 0.02 * whisker_level) + supports[4] * 18
+
 func snapshot() -> Dictionary:
-	return {"version": 4, "enemies": enemies.snapshot(), "shots": shots.snapshot(),
+	return {"version": 5, "max_hp": max_hp, "whisker_level": whisker_level, "body_level": body_level, "training_churu": training_churu, "training_can": training_can, "training_drops": training_drops, "next_training": next_training, "enemies": enemies.snapshot(), "shots": shots.snapshot(),
 		"hostile": hostile.snapshot(), "pickups": pickups.snapshot(), "player": player,
 		"aim": aim, "hp": hp, "elapsed": elapsed, "kills": kills, "level": level,
 		"xp": xp, "pending_levels": pending_levels, "invulnerable": invulnerable,
@@ -727,7 +801,13 @@ func snapshot() -> Dictionary:
 func restore(data: Dictionary) -> bool:
 	if data.get("version", 0) == 3:
 		data = _migrate_v3(data)
-	if data.get("version", 0) != 4:
+	if data.get("version", 0) == 4:
+		if not data.get("elapsed") is float or not is_finite(data.elapsed):
+			return false
+		data = data.duplicate(true)
+		data.merge({"max_hp": 100.0, "whisker_level": 0, "body_level": 0, "training_churu": 0, "training_can": 0, "training_drops": [], "next_training": 30.0 + 60.0 * maxf(0, floor((float(data.get("elapsed", 0)) - 30.0) / 60.0) + 1)}, true)
+		data.version = 5
+	if data.get("version", 0) != 5:
 		return false
 	var schema := snapshot()
 	for key in schema.keys():
@@ -772,7 +852,16 @@ func restore(data: Dictionary) -> bool:
 			return false
 	if data.weapons.filter(func(rank: int) -> bool: return rank > 0).size() not in [1, 2, 3, 4] or data.level < 1 or data.pending_levels < 0:
 		return false
-	if data.elapsed < 0 or data.hp <= 0 or data.hp > 100:
+	if data.whisker_level < 0 or data.whisker_level > 20 or data.body_level < 0 or data.body_level > 20 or data.max_hp != 100.0 + data.body_level * 5:
+		return false
+	if data.training_churu < 0 or data.training_churu > 26 or data.training_can < 0 or data.training_can > 6 or not is_finite(data.next_training) or data.next_training < 30:
+		return false
+	if data.training_drops.size() > 19:
+		return false
+	for drop in data.training_drops:
+		if not drop is Dictionary or not drop.get("at") is Vector2 or not drop.at.is_finite() or not drop.get("kind") is int or drop.kind not in [0, 1] or not drop.get("amount") is int or drop.amount != (2 if drop.kind == 0 else 1):
+			return false
+	if data.elapsed < 0 or data.hp <= 0 or data.hp > data.max_hp:
 		return false
 	if data.lures.size() > 12 or data.landmarks.size() > 32 or not data.clue_at.is_finite():
 		return false
@@ -797,6 +886,9 @@ func restore(data: Dictionary) -> bool:
 	for key in ["player", "aim", "hp", "elapsed", "kills", "level", "xp", "pending_levels", "invulnerable", "fired_events", "rerolls", "spawn_clock", "paw_clock", "trail_clock", "cap_clock", "volley_clock", "fur_tick_clock", "elite_ids", "shot_hits", "trail_direction", "food_clock", "food_boost", "food_regen", "interact_clock", "hide_charge", "boss_max_hp", "stage_id", "difficulty", "extra_clocks", "still_time", "bag_distance", "ambush_charge", "catnip", "clue_at", "clue_found", "next_event", "last_damage"]:
 		set(key, data[key])
 	available.assign(data.available)
+	for key in ["max_hp", "whisker_level", "body_level", "training_churu", "training_can", "next_training"]:
+		set(key, data[key])
+	training_drops.assign(data.training_drops)
 	landmarks.assign(data.landmarks)
 	lures.assign(data.lures)
 	obstacles = NightContent.buildings(stage_id)
@@ -898,7 +990,7 @@ func _lure_effects(dt: float) -> void:
 			if lure.kind == 1:
 				_add_blast(lure.at, radius * 0.65, 5 + weapons[7] * 2, 0.1, true, 7)
 			elif lure.kind == 2 and player.distance_to(lure.at) < 45:
-				hp = minf(100, hp + 2)
+				hp = minf(max_hp, hp + 2)
 				invulnerable = maxf(invulnerable, 0.55)
 		if lure.life <= 0:
 			if lure.kind == 0:
@@ -928,7 +1020,7 @@ func _bottle_reflect(id: int, before: Vector2) -> void:
 
 func _take_item(kind: int) -> void:
 	var healing := [0, 25, 12, 8, 6, 0, 0, 0, 4]
-	hp = minf(100, hp + healing[kind] * (1 + supports[8] * 0.2))
+	hp = minf(max_hp, hp + healing[kind] * (1 + supports[8] * 0.2))
 	match kind:
 		2: food_boost = 4
 		3: food_regen = 6
@@ -944,9 +1036,16 @@ func _take_item(kind: int) -> void:
 		events.append(NightContent.ITEM_NAMES[kind] + " 발견!")
 
 func _night_events(_dt: float) -> void:
+	while elapsed >= next_training and next_training < NightContent.BOSS_AT[stage_id]:
+		training_drops.append({"at": open_position(player + Vector2.from_angle(next_training * 0.1) * 85), "kind": 0, "amount": 2})
+		next_training += 60.0
+	if elapsed >= NightContent.BOSS_AT[stage_id] - 10 and not fired_events.has("boss_warning"):
+		fired_events["boss_warning"] = true
+		boss_position()
+		events.append(NightContent.BOSSES[stage_id] + " · 붉은 표식에서 곧 나타나요!")
 	if elapsed >= 45 and clue_at == Vector2.ZERO and not clue_found:
 		clue_at = open_position(player + Vector2(115, 45))
-		events.append("밥을 주던 사람의 물건 발견! 노란 화살표를 따라가 보세요.")
+		events.append("익숙한 주인의 물건 발견! 노란 화살표를 따라가 보세요.")
 	if not clue_found and clue_at != Vector2.ZERO and player.distance_to(clue_at) < 26:
 		clue_found = true
 		events.append("기록했어요! " + NightContent.CLUE_NOTES[stage_id])
@@ -970,7 +1069,7 @@ func _stage_boss_attack(id: int) -> void:
 		for n in range(-7, 8):
 			if absi(n) <= (0 if difficulty == 1 and excited else 1):
 				continue
-			var bullet := hostile.spawn(start + axis * n * 20, 5, 12, travel * (80 if excited else 65), 5)
+			var bullet := hostile.spawn(start + axis * n * (20 if excited else 24), 5, 12, travel * (80 if excited else 65), 5)
 			if bullet >= 0:
 				hostile.aux[bullet] = 1.0
 		if excited:
@@ -982,12 +1081,12 @@ func _stage_boss_attack(id: int) -> void:
 			if posmod(n - opening, 16) in [0, 1, 2]:
 				continue
 			var direction := Vector2.from_angle(n * TAU / 16)
-			var bullet := hostile.spawn(enemies.position[id] + direction * 35, 4, 14, direction * (70 if excited else 55), 6)
+			var bullet := hostile.spawn(enemies.position[id] + direction * 60, 4, 14, direction * (70 if excited else 55), 6)
 			if bullet >= 0:
 				hostile.aux[bullet] = 1.1
 		if excited or difficulty == 1:
 			_add_blast(player, 38, 18, 1.4, false, 0)
-		if excited and difficulty == 1:
+		if excited:
 			_add_blast(player + aim * 60, 30, 18, 1.7, false, 0)
 
 func _migrate_v3(old: Dictionary) -> Dictionary:

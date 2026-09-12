@@ -9,7 +9,7 @@ actual="$("$godot_bin" --version)"
 [[ "$actual" == "$expected".* ]] || { echo "Expected $expected, got $actual" >&2; exit 1; }
 "$godot_bin" --headless --path . --editor --import > build/game-import.log 2>&1
 if grep -E 'SCRIPT ERROR:|ERROR:' build/game-import.log; then exit 1; fi
-for suite in combat_test cat_test shop_test adventure_test ui_test feedback_test haptics_test audio_mix_test full_run_test; do
+for suite in combat_test cat_test shop_test adventure_test training_test ui_test feedback_test haptics_test audio_mix_test full_run_test; do
   "$godot_bin" --headless --path . --script "tests/$suite.gd" > "build/$suite.log" 2>&1
   if grep -E 'SCRIPT ERROR:|ERROR:|leaked at exit' "build/$suite.log"; then exit 1; fi
   case "$suite" in
@@ -17,6 +17,7 @@ for suite in combat_test cat_test shop_test adventure_test ui_test feedback_test
     cat_test) marker=CAT_TEST_OK ;;
     shop_test) marker=SHOP_TEST_OK ;;
     adventure_test) marker=ADVENTURE_TEST_OK ;;
+    training_test) marker=TRAINING_TEST_OK ;;
     ui_test) marker=UI_TEST_OK ;;
     haptics_test) marker=HAPTICS_TEST_OK ;;
     audio_mix_test) marker=AUDIO_MIX_TEST_OK ;;

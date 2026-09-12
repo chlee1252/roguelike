@@ -23,6 +23,8 @@ func _run() -> void:
 	var times := PackedFloat64Array()
 	var max_enemies := 0
 	var max_hostile := 0
+	var detour := Vector2.ZERO
+	var detour_frames := 0
 	for frame in 72001:
 		# A collection-focused bot follows nearby XP and otherwise circles.
 		var target := sim.player + Vector2.from_angle(sim.elapsed * 0.3) * 100
@@ -40,12 +42,17 @@ func _run() -> void:
 			_upgrade(sim)
 			check(sim.pending_levels >= 0, "Pending levels cannot be negative")
 		var start := Time.get_ticks_usec()
-		var direction := sim.player.direction_to(target)
+		var direction := detour if detour_frames > 0 else sim.player.direction_to(target)
+		detour_frames = maxi(0, detour_frames - 1)
 		if sim._building_at(sim.player + direction * 14):
-			for turn in [0.7, -0.7, 1.4, -1.4, PI]:
+			# Commit to walking around the obstacle instead of alternating
+			# left/right every frame while chasing a cache on its far side.
+			for turn in [PI / 2, -PI / 2, PI]:
 				var candidate := direction.rotated(turn)
 				if not sim._building_at(sim.player + candidate * 14):
 					direction = candidate
+					detour = direction
+					detour_frames = 90
 					break
 		sim.step(1.0 / 60.0, direction)
 		times.append((Time.get_ticks_usec() - start) / 1000.0)
@@ -53,6 +60,7 @@ func _run() -> void:
 		max_hostile = maxi(max_hostile, sim.hostile.count)
 		if frame % 3600 == 0:
 			print("RUN minute=%d level=%d kills=%d enemies=%d evolved=%s" % [frame / 3600, sim.level, sim.kills, sim.enemies.count, sim.evolved])
+			print("BOT player=%s target=%s blocked=%s" % [sim.player, target, sim._building_at(sim.player + sim.player.direction_to(target) * 14)])
 			await process_frame
 		if frame == 18000:
 			var data: Dictionary = bytes_to_var(var_to_bytes(sim.snapshot()))
