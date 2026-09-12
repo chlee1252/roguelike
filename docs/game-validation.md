@@ -218,3 +218,10 @@ Pretendard 한글 폰트를 포함하고 메뉴, HUD, 장비 선택, 설정, 일
 - Android API 33 ARM64 에뮬레이터에 APK를 설치했다. 처음에는 WAV 반복 끝을 샘플 수로 지정해 음악 한 주기 후 AudioTrack에서 SIGSEGV가 발생했다. 반복 끝을 마지막 유효 인덱스(샘플 수 − 1)로 고쳤다. 수정 APK에서 메뉴 음악이 여러 번 반복되어도 프로세스가 유지되고 오류 로그가 비어 있음을 확인했다.
 - Android에서 설정 진입, 배경음악/효과음 각각 끄기, 홈 이동과 앱 복귀, 설정 유지, 다시 켜기를 확인했다. 화면 캡처: `build/polish-android-menu.png`, `build/polish-android-settings.png`, `build/polish-android-mute.png`. `build/evolution-impact.png`는 연출 검사용 배치 화면이며 실제 진화 플레이 기록은 아니다.
 - 이번 변경으로 iOS를 다시 실행하지는 않았다. 음악 취향·장시간 청취 피로도·실제 휴대폰 스피커 밸런스와 고양이별 인간 플레이 난도는 별도 확인이 필요하다. Suno 생성곡은 사용하지 않았다.
+
+## 2026-09-12 — 실기기 햅틱 연결
+
+- 피격·레벨 업 선택·진화·승리의 진동을 `CombatHaptics`에 연결했다. 짧은 단발 진동, 250ms 최소 간격, 상위 이벤트 우선 처리, 백그라운드 요청 폐기를 검사했다. 효과음 음소거와 독립적으로 동작하며 햅틱 설정 저장/재로드 테스트도 통과했다.
+- `bash scripts/test-game.sh --render`: 기존 전체 검사와 `HAPTICS_TEST_OK`, 실제 설정 화면 캡처까지 통과했다. 새 설정 화면은 5개 항목과 실기기 테스트 버튼을 표시한다.
+- Android APK 내보내기 성공. `aapt dump permissions build/LastCommando.apk`에서 `android.permission.VIBRATE` 포함을 확인했다.
+- 연결 가능한 휴대폰이 없어 실제 햅틱 감촉은 확인하지 못했다. 시뮬레이터를 통한 물리 진동 검증으로 대체하지 않았다. 실기기 테스트 절차는 [햅틱 안내](haptics.md)에 정리했다.

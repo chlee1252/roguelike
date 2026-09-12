@@ -36,6 +36,8 @@ var screen_buttons: Array[Button] = []
 var resume_timer := 0.0
 var controls_layer: Node2D
 var audio: CombatAudio
+var haptics := CombatHaptics.new()
+var settings_path := "user://settings.cfg"
 var save_clock := 0.0
 var chain := 0
 var chain_timer := 0.0
@@ -398,6 +400,7 @@ func _update_hud(dt: float) -> void:
 	banner_time -= dt
 	wave_label.visible = banner_time > 0 and state == "playing"
 	if state == "playing":
+		haptics.play_events(battle.sound_events)
 		for sound in battle.sound_events:
 			audio.play(sound)
 	battle.sound_events.clear()
@@ -511,6 +514,7 @@ func _choose(id: String) -> void:
 				battle.pickups.position[i] = battle.player
 	battle.pending_levels -= 1
 	audio.play("upgrade")
+	haptics.play("upgrade")
 	if battle.pending_levels > 0:
 		_show_upgrades()
 	else:
@@ -528,6 +532,7 @@ func _show_results() -> void:
 			_clear_save()
 	if state != "results" and battle.victory:
 		audio.play("victory")
+		haptics.play("victory")
 	state = "results"
 	_reset_input()
 	_clear_overlay()
@@ -549,6 +554,7 @@ func _show_results() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_APPLICATION_RESUMED:
 		app_active = true
+		haptics.suspended = false
 		if is_instance_valid(audio):
 			audio.suspended = false
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -557,6 +563,7 @@ func _notification(what: int) -> void:
 		get_tree().quit()
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
 		app_active = false
+		haptics.suspended = true
 		if is_instance_valid(audio):
 			audio.suspended = true
 			audio.silence()
@@ -619,7 +626,8 @@ func _continue_run() -> void:
 
 func _load_settings() -> void:
 	var config := ConfigFile.new()
-	if config.load("user://settings.cfg") == OK:
+	if config.load(settings_path) == OK:
+		haptics.enabled = config.get_value("accessibility", "haptics", true)
 		audio.enabled = config.get_value("accessibility", "sound", true)
 		audio.music_enabled = config.get_value("accessibility", "music", audio.enabled)
 		mirrored = config.get_value("accessibility", "mirrored", false)
@@ -627,11 +635,12 @@ func _load_settings() -> void:
 
 func _save_settings() -> void:
 	var config := ConfigFile.new()
+	config.set_value("accessibility", "haptics", haptics.enabled)
 	config.set_value("accessibility", "sound", audio.enabled)
 	config.set_value("accessibility", "music", audio.music_enabled)
 	config.set_value("accessibility", "mirrored", mirrored)
 	config.set_value("accessibility", "reduced_effects", reduced_effects)
-	config.save("user://settings.cfg")
+	config.save(settings_path)
 
 func _show_settings() -> void:
 	var return_to_menu := state == "menu"
@@ -641,14 +650,16 @@ func _show_settings() -> void:
 	_panel(overlay, Rect2(130, 25, 380, 310), GameSkin.SURFACE, 20)
 	_label(overlay, "나에게 맞는 플레이", Vector2(154, 47), 25)
 	_label(overlay, "편안하게 조작할 수 있도록 설정하세요.", Vector2(155, 86), 11, GameSkin.MUTED)
-	for i in 4:
-		var y := 108 + i * 42
-		_panel(overlay, Rect2(150, y, 340, 38), Color("293b43"), 10)
-		_label(overlay, ["배경음악", "효과음", "조이스틱 위치", "화면 흔들림·피해 숫자"][i], Vector2(166, y + 10), 12)
-		var active: bool = [audio.music_enabled, audio.enabled, mirrored, not reduced_effects][i]
+	for i in 5:
+		var y := 102 + i * 35
+		_panel(overlay, Rect2(150, y, 340, 32), Color("293b43"), 10)
+		_label(overlay, ["배경음악", "효과음", "조이스틱 위치", "화면 흔들림·피해 숫자", "햅틱 (진동)"][i], Vector2(166, y + 7), 12)
+		var active: bool = [audio.music_enabled, audio.enabled, mirrored, not reduced_effects, haptics.enabled][i]
 		var value := ("오른쪽" if mirrored else "왼쪽") if i == 2 else ("켜짐" if active else "꺼짐")
-		_button(overlay, value, Rect2(395, y + 3, 84, 32), _toggle_setting.bind(["music", "sound", "mirrored", "effects"][i]), active)
-	_button(overlay, "돌아가기", Rect2(150, 283, 340, 34), _show_menu if return_to_menu else _return_pause)
+		_button(overlay, value, Rect2(395, y + 1, 84, 30), _toggle_setting.bind(["music", "sound", "mirrored", "effects", "haptics"][i]), active)
+	_button(overlay, "돌아가기", Rect2(150, 283, 220, 34), _show_menu if return_to_menu else _return_pause)
+	var preview := _button(overlay, "진동 테스트" if haptics.supported else "실기기 전용", Rect2(380, 283, 110, 34), haptics.play.bind("preview"))
+	preview.disabled = not haptics.supported or not haptics.enabled
 
 func _return_pause() -> void:
 	state = "playing"
@@ -661,6 +672,7 @@ func _toggle_setting(key: String) -> void:
 			if not audio.enabled:
 				for voice in audio.voices:
 					voice.stop()
+		"haptics": haptics.enabled = not haptics.enabled
 		"music": audio.music_enabled = not audio.music_enabled
 		"mirrored": mirrored = not mirrored
 		"effects": reduced_effects = not reduced_effects
