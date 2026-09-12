@@ -723,7 +723,8 @@ func _page(title_text: String, page_state: String) -> void:
 	_clear_overlay()
 	_panel(overlay, Rect2(0, 0, 640, 360), GameSkin.BASE, 0)
 	_label(overlay, title_text, Vector2(26, 20), 25)
-	_button(overlay, "돌아가기", Rect2(522, 20, 94, 34), _show_menu)
+	var back := _button(overlay, "돌아가기", Rect2(522, 20, 94, 34), _show_menu)
+	back.z_index = 20
 
 func _show_stages() -> void:
 	_page("오늘은 어디를 걸을까?", "stages")
