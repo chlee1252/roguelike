@@ -50,7 +50,16 @@ func _run() -> void:
 	game.battle.add_effect(game.battle.player + Vector2(46, -12), 14, 0.42, 2)
 	game.battle.effects[-1].life = 0.32
 	game.field.queue_redraw()
+	game.battle.add_effect(game.battle.player + Vector2(45, -12), 10, 0.32, 5)
+	game.battle.effects[-1]["damage"] = 54
+	game.battle.effects[-1].life = 0.22
+	game._update_chain(18, 0.01)
+	game.field.queue_redraw()
 	await _capture("firing-impact")
+	game.battle.add_effect(game.battle.player, 115, 0.9, 6)
+	game.battle.effects[-1].life = 0.45
+	game.field.queue_redraw()
+	await _capture("evolution-impact")
 	var stage_boss: int = game.battle.spawn_enemy(7, game.battle.player + Vector2(100, 15))
 	game.battle.enemies.health[stage_boss] = game.battle.boss_max_hp * 0.4
 	game._update_hud(0)

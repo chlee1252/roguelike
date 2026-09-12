@@ -83,6 +83,7 @@ func _run() -> void:
 	broken["weapons"] = 42
 	check(not Battle.new(3).restore(broken), "Malformed save types must be rejected")
 	game.audio.silence()
-	await create_timer(0.1).timeout
+	game.queue_free()
+	await create_timer(0.15).timeout
 	print("UI_TEST_OK" if failures == 0 else "UI_TEST_FAILED %d" % failures)
 	quit(1 if failures else 0)

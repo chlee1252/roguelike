@@ -584,8 +584,11 @@ func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -
 	amount *= 1.0 + minf(bonus, 0.65)
 	damage_dealt[weapon] += minf(enemies.health[id], amount)
 	enemies.health[id] -= amount
-	if amount >= 12 and enemies.health[id] > 0:
-		add_effect(enemies.position[id], 6, 0.12, 5)
+	if amount >= 12:
+		add_effect(enemies.position[id], 10, 0.32, 5)
+		effects[-1]["damage"] = int(amount)
+		if weapon == 2:
+			_sound("bounce")
 	if enemies.health[id] <= 0:
 		var type := enemies.kind[id]
 		var at := enemies.position[id]
@@ -593,6 +596,7 @@ func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -
 			fur_patches.append({"at": at, "life": 3.0})
 		enemies.release(id)
 		kills += 1
+		_sound("defeat")
 		_drop_xp(at, 30 if type >= 6 else 8 if type >= 4 else 2 if type > 0 else 1)
 		if type == 6 or elite_ids.get(id, -1) == enemies.generation[id]:
 			caches.append(open_position(at))
@@ -607,7 +611,7 @@ func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -
 			events.append("보스 처치! 골목이 조용해졌어요.")
 		if rng.randf() < 0.012:
 			pickups.spawn(at + Vector2(8, 0), 1, 25, Vector2.ZERO, 22)
-		add_effect(at, 14 if type < 4 or type == 6 else 30, 0.42, 2)
+		add_effect(at, 22 if type < 4 or type == 6 else 42, 0.42, 2)
 
 func _drop_xp(at: Vector2, value: int) -> void:
 	at = open_position(at)
@@ -673,7 +677,8 @@ func _collect(dt: float) -> void:
 			if not eligible.is_empty():
 				evolved[eligible[0]] = true
 				caches.remove_at(i)
-				events.append(NightContent.EVOLUTIONS[eligible[0]] + " 완성!")
+				events.append("무기 진화! " + NightContent.EVOLUTIONS[eligible[0]])
+				add_effect(player, 115, 0.9, 6)
 				_sound("evolve")
 
 func eligible_evolutions() -> Array[int]:
@@ -843,7 +848,7 @@ func _extra_weapons(dt: float) -> void:
 						hostile.release(id)
 			extra_clocks[3] = 1.8 if evolved[3] else 2.6 if weapons[3] >= 5 else 3.5
 			add_effect(player, radius, 0.45, 4)
-			_sound("paw")
+			_sound("hiss")
 	if weapons[4] > 0 and bag_distance >= (65 if weapons[4] >= 5 else 90):
 		bag_distance = 0
 		_add_lure(player - aim * 30, 0, 2 + weapons[4] * 0.35)
@@ -863,6 +868,7 @@ func _extra_weapons(dt: float) -> void:
 		var target := dense_target(220)
 		if target >= 0:
 			_add_lure(enemies.position[target], 1, 2.5 + weapons[7] * 0.25)
+			_sound("bell")
 			extra_clocks[7] = 4 if weapons[7] >= 5 else 5
 
 func _frighten(at: Vector2, radius: float, duration: float, force: float) -> void:
@@ -944,7 +950,7 @@ func _night_events(_dt: float) -> void:
 	if not clue_found and clue_at != Vector2.ZERO and player.distance_to(clue_at) < 26:
 		clue_found = true
 		events.append(NightContent.CLUE_NOTES[stage_id])
-		_sound("evolve")
+		_sound("upgrade")
 	if elapsed >= next_event and elapsed < NightContent.BOSS_AT[stage_id]:
 		next_event += 120
 		var at := open_position(player + Vector2.from_angle(rng.randf() * TAU) * 105)

@@ -4,6 +4,8 @@ extends Node2D
 var battle: Battle
 var cat_variant := 0
 var theme_id := 0
+var impact := 0.0
+var subtle_effects := false
 var sprites: Array[Texture2D] = []
 
 func _ready() -> void:
@@ -23,6 +25,8 @@ func _draw() -> void:
 	if battle == null:
 		return
 	var shift := Vector2(320, 180) - battle.camera()
+	if not subtle_effects:
+		shift += Vector2(sin(battle.elapsed * 71), cos(battle.elapsed * 59)) * impact
 	_ground(shift)
 	_night_objects(shift)
 	var visible_rect := Rect2(-45, -45, 730, 450)
@@ -80,8 +84,9 @@ func _draw() -> void:
 	for cache in battle.caches:
 		var at: Vector2 = cache + shift
 		var marker := at.clamp(Vector2(16, 61), Vector2(624, 310))
-		draw_circle(marker, 9, Color("e9c995"), false, 1)
-		_text("?", marker + Vector2(-3, 4), 11, Color("e9c995"))
+		draw_rect(Rect2(marker - Vector2(8, 6), Vector2(16, 12)), Color("b89370"))
+		draw_line(marker - Vector2(0, 6), marker + Vector2(0, 6), Color("f3d6aa"), 2)
+		_text("진화", marker + Vector2(-9, -10), 9, Color("ffe6a6"))
 	for blast in battle.blasts:
 		var at: Vector2 = blast.at + shift
 		var tint := Color("f1c99f") if blast.friendly else Color("f594a0")
@@ -103,6 +108,8 @@ func _draw() -> void:
 			if not visible_rect.has_point(at):
 				continue
 			if pool == battle.shots:
+				if not subtle_effects:
+					draw_line(at - pool.velocity[i].normalized() * 16, at, Color(1, 0.88, 0.65, 0.28), 3)
 				if pool.kind[i] == 0:
 					var direction: Vector2 = pool.velocity[i].normalized()
 					var side: Vector2 = direction.orthogonal()
@@ -122,15 +129,39 @@ func _draw() -> void:
 				draw_circle(at, 5 if pool.aux[i] > 0 else 4, Color("2a243b"))
 				draw_circle(at, 3, Color("f397af"), pool.aux[i] <= 0, -1 if pool.aux[i] <= 0 else 1)
 				draw_circle(at, 1, Color("fff0dd"))
+	var number_positions: Array[Vector2] = []
 	for effect in battle.effects:
 		var at: Vector2 = effect.at + shift
 		if not visible_rect.has_point(at):
 			continue
 		var phase: float = 1 - effect.life / effect.total
-		if effect.kind == 3:
+		if effect.kind == 5:
+			if phase < 0.35:
+				for n in 4:
+					var ray := Vector2.from_angle(n * PI / 2 + PI / 4)
+					draw_line(at + ray * 3, at + ray * (10 - phase * 10), Color("fff4cc"), 2)
+			if not subtle_effects and effect.get("damage", 0) >= 25 and number_positions.size() < 12:
+				var number_at := at + Vector2(-6, -12 - phase * 16)
+				var crowded := false
+				for previous in number_positions:
+					if absf(previous.x - number_at.x) < 22 and absf(previous.y - number_at.y) < 13:
+						crowded = true
+						break
+				if not crowded:
+					number_positions.append(number_at)
+					_text(str(effect.damage), number_at, 11, Color(1, 0.9, 0.65, 1 - phase))
+		elif effect.kind == 6:
+			if not subtle_effects:
+				draw_arc(at, effect.radius * phase, 0, TAU, 48, Color(1, 0.86, 0.5, 1 - phase), 3)
+				for n in 12:
+					var point: Vector2 = at + Vector2.from_angle(n * TAU / 12) * effect.radius * phase
+					draw_rect(Rect2(point, Vector2(3, 3)), Color(1, 0.92, 0.7, 1 - phase))
+		elif effect.kind == 3:
 			for n in 3:
 				draw_arc(at + Vector2(n * 3 - 3, 0), effect.radius * (0.7 + phase * 0.3), battle.aim.angle() - 0.6, battle.aim.angle() + 0.6, 12, Color(0.86, 0.97, 0.85, 1 - phase), 2)
 		else:
+			if effect.kind == 2 and phase < 0.3:
+				draw_circle(at, 8 * (1 - phase * 2), Color(1, 0.95, 0.78, (1 - phase * 3) * 0.65))
 			var tint := Color("f4bfba") if effect.kind == 1 else Color("ead5ad") if effect.kind == 4 else Color("b5dccf")
 			draw_arc(at, effect.radius * (0.2 + phase), 0, TAU, 20, Color(tint, 1 - phase), 1)
 			for n in 7:

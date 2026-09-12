@@ -227,4 +227,4 @@ func _ui() -> void:
 	DirAccess.remove_absolute(game.save_path + ".progress.cfg")
 	game.audio.silence()
 	game.queue_free()
-	await process_frame
+	await create_timer(0.15).timeout

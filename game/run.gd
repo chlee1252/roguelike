@@ -37,6 +37,10 @@ var resume_timer := 0.0
 var controls_layer: Node2D
 var audio: CombatAudio
 var save_clock := 0.0
+var chain := 0
+var chain_timer := 0.0
+var chain_label: Label
+var app_active := true
 var mirrored := false
 var reduced_effects := false
 var boss_panel: Control
@@ -179,6 +183,7 @@ func _build_hud() -> void:
 	boss_panel.add_child(boss_bar)
 	boss_bar.size = Vector2(272, 4)
 	boss_panel.visible = false
+	chain_label = _label(hud, "", Vector2(218, 115), 18, GameSkin.MINT)
 	_button(hud, "Ⅱ", Rect2(580, 10, 48, 38), pause_run)
 
 func _style_bar(bar: ProgressBar, color: Color) -> void:
@@ -234,6 +239,9 @@ func start_run() -> void:
 	field.set_cat_variant(collection.selected)
 	field.theme_id = collection.selected_theme
 	_clear_save()
+	chain = 0
+	chain_timer = 0
+	field.impact = 0
 	result_saved = false
 	battle = Battle.new()
 	battle.configure(selected_stage, selected_difficulty, progress.available_weapons(), NightContent.CAT_STARTERS[collection.selected])
@@ -323,7 +331,9 @@ func _physics_process(dt: float) -> void:
 			_reset_input()
 	if state == "playing":
 		var keyboard := Vector2(float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT)), float(Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN)) - float(Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP)))
+		var before_kills := battle.kills
 		battle.step(dt, keyboard if keyboard.length_squared() > 0 else movement)
+		_update_chain(battle.kills - before_kills, dt)
 		save_clock += dt
 		if save_clock >= 10:
 			save_clock = 0
@@ -332,11 +342,30 @@ func _physics_process(dt: float) -> void:
 			_show_results()
 		elif battle.pending_levels > 0:
 			_show_upgrades()
+	audio.set_context(state if app_active else "", battle.boss_health() > 0)
+	field.subtle_effects = reduced_effects
+	field.impact = maxf(0, field.impact - dt * 12)
 	_update_hud(dt)
 	field.queue_redraw()
 	controls_layer.queue_redraw()
 
+func _update_chain(defeated: int, dt: float) -> void:
+	chain_timer = maxf(0, chain_timer - dt)
+	if chain_timer == 0:
+		chain = 0
+	if defeated > 0:
+		var previous := chain
+		chain += defeated
+		chain_timer = 3.0
+		field.impact = minf(2.0, 0.5 + defeated * 0.35)
+		if int(chain / 10) > int(previous / 10):
+			audio.play("combo")
+	chain_label.text = "%d마리 연속 처치!" % chain
+	chain_label.visible = chain >= 5 and chain_timer > 0
+	chain_label.modulate.a = minf(1, chain_timer)
+
 func _update_hud(dt: float) -> void:
+	title.text = CatPixel.NAMES[field.cat_variant]
 	var boss_hp := battle.boss_health()
 	boss_panel.visible = boss_hp > 0
 	if boss_hp > 0:
@@ -391,8 +420,8 @@ func _show_upgrades(keep_options: bool = false) -> void:
 	_clear_overlay()
 	_backdrop()
 	_chip(overlay, "%d레벨 달성" % battle.level, Rect2(28, 21, 94, 24))
-	_label(overlay, "레벨 업!를 고르세요", Vector2(28, 54), 26)
-	_label(overlay, "무기 %d/4 · 패시브 %d/4 — 고르는 동안 밤은 멈춰요." % [battle.occupied_weapon_slots(), battle.supports.filter(func(rank: int) -> bool: return rank > 0).size()], Vector2(29, 91), 11, GameSkin.MUTED)
+	_label(overlay, "레벨 업! 하나를 고르세요", Vector2(28, 54), 26)
+	_label(overlay, "무기 %d/4 · 보조 아이템 %d/4 — 선택하는 동안 전투는 멈춰요." % [battle.occupied_weapon_slots(), battle.supports.filter(func(rank: int) -> bool: return rank > 0).size()], Vector2(29, 91), 11, GameSkin.MUTED)
 	for i in options.size():
 		var id := options[i]
 		var x := 28 + i * 198
@@ -404,7 +433,7 @@ func _show_upgrades(keep_options: bool = false) -> void:
 		var rank_text := "간식"
 		if id.begins_with("w") or id.begins_with("s"):
 			var rank: int = battle.weapons[id.substr(1).to_int()] if id.begins_with("w") else battle.supports[id.substr(1).to_int()]
-			rank_text = "새로운 무기" if rank == 0 else "%d → %d 레벨" % [rank, rank + 1]
+			rank_text = ("새 무기" if id.begins_with("w") else "새 강화") if rank == 0 else "%d → %d 레벨" % [rank, rank + 1]
 		_label(overlay, rank_text, Vector2(x + 69, 148), 10, tint)
 		var description := _describe(id)
 		_label(overlay, description[0], Vector2(x + 14, 185), 16)
@@ -464,7 +493,7 @@ func _describe(id: String) -> Array[String]:
 		var partner: int = NightContent.EVO_SUPPORT[index]
 		var evolution: String = "최대 레벨에 고유 효과 완성" if partner < 0 else "진화에 필요한 강화: " + SUPPORT_NAMES[partner]
 		return [WEAPON_NAMES[index], NightContent.weapon_note(index, battle.weapons[index]) + "\n" + evolution]
-	return [SUPPORT_NAMES[index], NightContent.PASSIVE_NOTES[index] + "\n최대 2레벨 · 패시브 4개까지"]
+	return [SUPPORT_NAMES[index], NightContent.PASSIVE_NOTES[index] + "\n최대 2레벨 · 보조 아이템 4개까지"]
 
 func _choose(id: String) -> void:
 	if state != "upgrading" or not options.has(id) or not battle.can_upgrade(id):
@@ -497,6 +526,8 @@ func _show_results() -> void:
 		result_saved = progress.record_result(run_id, battle.stage_id, battle.victory, battle.elapsed, battle.clue_found)
 		if result_saved:
 			_clear_save()
+	if state != "results" and battle.victory:
+		audio.play("victory")
 	state = "results"
 	_reset_input()
 	_clear_overlay()
@@ -516,12 +547,18 @@ func _show_results() -> void:
 	_button(overlay, "쉼터로 돌아가기" if result_saved else "기록 저장 재시도", Rect2(340, 277, 216, 36), _show_shelter if result_saved else _show_results)
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_IN or what == NOTIFICATION_APPLICATION_RESUMED:
+		app_active = true
+		if is_instance_valid(audio):
+			audio.suspended = false
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		audio.silence()
 		_save_session()
 		get_tree().quit()
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		app_active = false
 		if is_instance_valid(audio):
+			audio.suspended = true
 			audio.silence()
 		_save_session()
 		_pause_for_background.call_deferred()
@@ -584,12 +621,14 @@ func _load_settings() -> void:
 	var config := ConfigFile.new()
 	if config.load("user://settings.cfg") == OK:
 		audio.enabled = config.get_value("accessibility", "sound", true)
+		audio.music_enabled = config.get_value("accessibility", "music", audio.enabled)
 		mirrored = config.get_value("accessibility", "mirrored", false)
 		reduced_effects = config.get_value("accessibility", "reduced_effects", false)
 
 func _save_settings() -> void:
 	var config := ConfigFile.new()
 	config.set_value("accessibility", "sound", audio.enabled)
+	config.set_value("accessibility", "music", audio.music_enabled)
 	config.set_value("accessibility", "mirrored", mirrored)
 	config.set_value("accessibility", "reduced_effects", reduced_effects)
 	config.save("user://settings.cfg")
@@ -602,12 +641,13 @@ func _show_settings() -> void:
 	_panel(overlay, Rect2(130, 25, 380, 310), GameSkin.SURFACE, 20)
 	_label(overlay, "나에게 맞는 플레이", Vector2(154, 47), 25)
 	_label(overlay, "편안하게 조작할 수 있도록 설정하세요.", Vector2(155, 86), 11, GameSkin.MUTED)
-	for i in 3:
-		var y := 118 + i * 52
-		_panel(overlay, Rect2(150, y, 340, 44), Color("293b43"), 10)
-		_label(overlay, ["효과음", "조이스틱 위치", "피격 시 화면 효과"][i], Vector2(166, y + 13), 12)
-		var value := ("켜짐" if audio.enabled else "꺼짐") if i == 0 else ("오른쪽" if mirrored else "왼쪽") if i == 1 else ("꺼짐" if reduced_effects else "켜짐")
-		_button(overlay, value, Rect2(395, y + 6, 84, 32), _toggle_setting.bind(["sound", "mirrored", "effects"][i]), (i == 0 and audio.enabled) or (i == 2 and not reduced_effects))
+	for i in 4:
+		var y := 108 + i * 42
+		_panel(overlay, Rect2(150, y, 340, 38), Color("293b43"), 10)
+		_label(overlay, ["배경음악", "효과음", "조이스틱 위치", "화면 흔들림·피해 숫자"][i], Vector2(166, y + 10), 12)
+		var active: bool = [audio.music_enabled, audio.enabled, mirrored, not reduced_effects][i]
+		var value := ("오른쪽" if mirrored else "왼쪽") if i == 2 else ("켜짐" if active else "꺼짐")
+		_button(overlay, value, Rect2(395, y + 3, 84, 32), _toggle_setting.bind(["music", "sound", "mirrored", "effects"][i]), active)
 	_button(overlay, "돌아가기", Rect2(150, 283, 340, 34), _show_menu if return_to_menu else _return_pause)
 
 func _return_pause() -> void:
@@ -616,7 +656,12 @@ func _return_pause() -> void:
 
 func _toggle_setting(key: String) -> void:
 	match key:
-		"sound": audio.enabled = not audio.enabled
+		"sound":
+			audio.enabled = not audio.enabled
+			if not audio.enabled:
+				for voice in audio.voices:
+					voice.stop()
+		"music": audio.music_enabled = not audio.music_enabled
 		"mirrored": mirrored = not mirrored
 		"effects": reduced_effects = not reduced_effects
 	_save_settings()
