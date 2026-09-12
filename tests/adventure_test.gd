@@ -217,11 +217,12 @@ func _ui() -> void:
 	check(not game._describe("s10")[0].is_empty(), "Two-digit passive IDs must render correctly")
 	game._show_shelter()
 	game._shelter_tab(1)
-	game._starter(3)
-	check(game.progress.starter == 3, "Starter selection must update saved progression")
-	game._show_menu()
-	game.start_run()
-	check(game.battle.weapons[3] == 1 and game.battle.weapons[0] == 0, "Chosen starter must replace the fishbone")
+	game.progress.starter = 4 # Legacy global selection must not override cat identity.
+	for cat in 4:
+		game.collection.selected = cat
+		game.start_run()
+		check(game.battle.weapons[NightContent.CAT_STARTERS[cat]] == 1, "Each cat must use its own default weapon")
+		check(game.battle.occupied_weapon_slots() == 1, "A new run starts with exactly one weapon")
 	game._clear_save()
 	DirAccess.remove_absolute(game.save_path + ".progress.cfg")
 	game.audio.silence()

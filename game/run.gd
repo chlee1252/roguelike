@@ -205,8 +205,8 @@ func _show_menu() -> void:
 	_button(overlay, "고양이 · 상점", Rect2(425, 20, 112, 32), _show_cats)
 	_button(overlay, "설정", Rect2(548, 20, 60, 32), _show_settings)
 	_chip(overlay, "밤 산책  ·  보스 도전", Rect2(32, 67, 144, 24))
-	_label(overlay, "말랑한 발로,\n통통 밤 산책.", Vector2(30, 106), 29)
-	_label(overlay, "생선뼈 톡, 털실공 통통!\n장난꾸러기 앙숙들과 골목 한 바퀴.", Vector2(32, 204), 12, GameSkin.MUTED)
+	_label(overlay, "귀여운 고양이,\n시원한 한 방!", Vector2(30, 106), 29)
+	_label(overlay, "이동은 내가, 공격은 고양이가.\n몰려오는 유령을 물리치고 보스에 도전!", Vector2(32, 204), 12, GameSkin.MUTED)
 	var art := MissionArt.new()
 	art.position = Vector2(340, 72)
 	art.theme_id = collection.selected_theme
@@ -218,11 +218,11 @@ func _show_menu() -> void:
 	_chip(overlay, "가로등 불빛 · 낯선 기척 · 밥 냄새", Rect2(363, 249, 220, 22), Color("d9c7a3"))
 	if FileAccess.file_exists(save_path):
 		_button(overlay, "이어하기  →", Rect2(32, 269, 158, 44), _continue_run, true)
-		_button(overlay, "새 산책", Rect2(200, 269, 108, 44), _show_stages)
+		_button(overlay, "새 게임", Rect2(200, 269, 108, 44), _show_stages)
 	else:
-		_button(overlay, "산책길 고르기  →", Rect2(32, 269, 244, 44), _show_stages, true)
+		_button(overlay, "스테이지 선택  →", Rect2(32, 269, 244, 44), _show_stages, true)
 	_label(overlay, "목표", Vector2(343, 294), 10, GameSkin.MUTED)
-	_label(overlay, "장난꾸러기 보스를 만나러 가요.", Vector2(373, 294), 9)
+	_label(overlay, "보스를 물리치면 스테이지 클리어!", Vector2(373, 294), 9)
 	var hint := "화면을 누르고 끌어 이동 · 공격은 고양이가 알아서 해요" if OS.has_feature("mobile") else "WASD / 방향키 · 터치 드래그로 이동     Esc 일시정지"
 	_label(overlay, hint, Vector2(32, 334), 9, GameSkin.MUTED)
 
@@ -236,7 +236,7 @@ func start_run() -> void:
 	_clear_save()
 	result_saved = false
 	battle = Battle.new()
-	battle.configure(selected_stage, selected_difficulty, progress.available_weapons(), progress.starter)
+	battle.configure(selected_stage, selected_difficulty, progress.available_weapons(), NightContent.CAT_STARTERS[collection.selected])
 	field.battle = battle
 	state = "playing"
 	hud.visible = true
@@ -262,8 +262,8 @@ func pause_run() -> void:
 	_backdrop()
 	_panel(overlay, Rect2(158, 27, 324, 306), GameSkin.SURFACE, 20)
 	_chip(overlay, "잠시 쉬어가세요", Rect2(261, 46, 117, 23))
-	_label(overlay, "잠깐 웅크리기", Vector2(216, 80), 27)
-	_label(overlay, "골목은 기다려 줄 거예요.", Vector2(224, 122), 11, GameSkin.MUTED)
+	_label(overlay, "일시정지", Vector2(216, 80), 27)
+	_label(overlay, "준비되면 계속해요.", Vector2(224, 122), 11, GameSkin.MUTED)
 	_button(overlay, "계속하기", Rect2(182, 161, 276, 42), _resume, true)
 	_button(overlay, "저장하고 나가기", Rect2(182, 213, 276, 40), _save_and_menu)
 	_button(overlay, "설정", Rect2(182, 263, 276, 40), _show_settings)
@@ -342,7 +342,7 @@ func _update_hud(dt: float) -> void:
 	if boss_hp > 0:
 		boss_bar.max_value = battle.boss_max_hp
 		boss_bar.value = boss_hp
-		boss_title.text = NightContent.BOSSES[battle.stage_id] + "  ·  " + ("더 신났어요!" if boss_hp < battle.boss_max_hp * 0.5 else "골목의 장난꾸러기")
+		boss_title.text = NightContent.BOSSES[battle.stage_id] + "  ·  " + ("2단계 · 공격 강화" if boss_hp < battle.boss_max_hp * 0.5 else "보스")
 	wave_label.position.y = 90 if boss_hp > 0 else 58
 	health_bar.value = battle.hp
 	xp_bar.max_value = battle.xp_needed()
@@ -353,7 +353,7 @@ func _update_hud(dt: float) -> void:
 	for i in 8:
 		if battle.weapons[i] > 0:
 			parts.append((EVOLUTION_NAMES[i] + " ★") if battle.evolved[i] else NightContent.SHORT[i] + " " + str(battle.weapons[i]) + "/6" )
-	loadout.text = "   ".join(parts) + "  |  %d/4 버릇" % battle.occupied_weapon_slots()
+	loadout.text = "   ".join(parts) + "  |  %d/4 무기" % battle.occupied_weapon_slots()
 	if battle.minute() != last_minute and state == "playing":
 		last_minute = battle.minute()
 		wave_label.text = "%02d / %s" % [last_minute + 1, Battle.TITLES[last_minute]]
@@ -364,7 +364,7 @@ func _update_hud(dt: float) -> void:
 	if battle.eligible_evolutions().is_empty():
 		for cache in battle.caches:
 			if cache.distance_to(battle.player) < 35:
-				wave_label.text = "익숙한 냄새 · 버릇 6 + 짝 패시브 2레벨이면 진화"
+				wave_label.text = "진화 조건: 무기 6레벨 + 전용 강화 2레벨"
 				banner_time = 0.2
 	banner_time -= dt
 	wave_label.visible = banner_time > 0 and state == "playing"
@@ -391,7 +391,7 @@ func _show_upgrades(keep_options: bool = false) -> void:
 	_clear_overlay()
 	_backdrop()
 	_chip(overlay, "%d레벨 달성" % battle.level, Rect2(28, 21, 94, 24))
-	_label(overlay, "다음 한 수를 고르세요", Vector2(28, 54), 26)
+	_label(overlay, "레벨 업!를 고르세요", Vector2(28, 54), 26)
 	_label(overlay, "무기 %d/4 · 패시브 %d/4 — 고르는 동안 밤은 멈춰요." % [battle.occupied_weapon_slots(), battle.supports.filter(func(rank: int) -> bool: return rank > 0).size()], Vector2(29, 91), 11, GameSkin.MUTED)
 	for i in options.size():
 		var id := options[i]
@@ -404,7 +404,7 @@ func _show_upgrades(keep_options: bool = false) -> void:
 		var rank_text := "간식"
 		if id.begins_with("w") or id.begins_with("s"):
 			var rank: int = battle.weapons[id.substr(1).to_int()] if id.begins_with("w") else battle.supports[id.substr(1).to_int()]
-			rank_text = "새로운 버릇" if rank == 0 else "%d → %d 레벨" % [rank, rank + 1]
+			rank_text = "새로운 무기" if rank == 0 else "%d → %d 레벨" % [rank, rank + 1]
 		_label(overlay, rank_text, Vector2(x + 69, 148), 10, tint)
 		var description := _describe(id)
 		_label(overlay, description[0], Vector2(x + 14, 185), 16)
@@ -462,7 +462,7 @@ func _describe(id: String) -> Array[String]:
 	var index := id.substr(1).to_int()
 	if id.begins_with("w"):
 		var partner: int = NightContent.EVO_SUPPORT[index]
-		var evolution: String = "최대 레벨에 고유 효과 완성" if partner < 0 else "진화 짝: " + SUPPORT_NAMES[partner]
+		var evolution: String = "최대 레벨에 고유 효과 완성" if partner < 0 else "진화에 필요한 강화: " + SUPPORT_NAMES[partner]
 		return [WEAPON_NAMES[index], NightContent.weapon_note(index, battle.weapons[index]) + "\n" + evolution]
 	return [SUPPORT_NAMES[index], NightContent.PASSIVE_NOTES[index] + "\n최대 2레벨 · 패시브 4개까지"]
 
@@ -481,7 +481,7 @@ func _choose(id: String) -> void:
 			if battle.pickups.alive[i]:
 				battle.pickups.position[i] = battle.player
 	battle.pending_levels -= 1
-	audio.play("evolve")
+	audio.play("upgrade")
 	if battle.pending_levels > 0:
 		_show_upgrades()
 	else:
@@ -503,16 +503,16 @@ func _show_results() -> void:
 	_backdrop()
 	_panel(overlay, Rect2(60, 28, 520, 300), GameSkin.SURFACE, 20)
 	_chip(overlay, "밤 산책 기록", Rect2(84, 47, 76, 23))
-	_label(overlay, "골목 산책 완료!" if battle.victory else "잠시 쉬어가는 밤", Vector2(84, 86), 29)
+	_label(overlay, "스테이지 클리어!" if battle.victory else "아쉽지만, 다시 도전!", Vector2(84, 86), 29)
 	_label(overlay, progress.last_notice if result_saved else "저장 재시도가 필요해요. 쉼터에서 다시 확인할 수 있어요." if battle.finished else "작은 발자국이 골목을 조금 바꿨습니다.", Vector2(85, 128), 10, GameSkin.MUTED)
 	var values := ["%02d:%02d" % [int(battle.elapsed) / 60, int(battle.elapsed) % 60], str(battle.kills), str(battle.level)]
 	for i in 3:
 		var x := 84 + i * 156
 		_panel(overlay, Rect2(x, 164, 146, 76), Color("293d43"), 12)
-		_label(overlay, ["산책 시간", "돌려보낸 괴이", "도달 레벨"][i], Vector2(x + 14, 174), 10, GameSkin.MUTED)
+		_label(overlay, ["산책 시간", "처치한 적", "도달 레벨"][i], Vector2(x + 14, 174), 10, GameSkin.MUTED)
 		_label(overlay, values[i], Vector2(x + 14, 195), 25, GameSkin.MINT)
 	_label(overlay, "발견: " + NightContent.CLUES[battle.stage_id] if battle.victory else "마지막 위험: " + battle.last_damage, Vector2(84, 247), 10, GameSkin.MUTED)
-	_button(overlay, "그 뒤의 골목" if battle.victory else "다시 도전", Rect2(84, 277, 244, 36), _show_story if battle.victory else start_run, true)
+	_button(overlay, "이야기 보기" if battle.victory else "다시 도전", Rect2(84, 277, 244, 36), _show_story if battle.victory else start_run, true)
 	_button(overlay, "쉼터로 돌아가기" if result_saved else "기록 저장 재시도", Rect2(340, 277, 216, 36), _show_shelter if result_saved else _show_results)
 
 func _notification(what: int) -> void:
@@ -637,7 +637,7 @@ func _show_cats() -> void:
 		_show_token_packs()
 	else:
 		_show_cosmetics()
-	var caption := "[테스트 상점] 가상 토큰만 사용하며 실제 결제·구매 내역과 분리됩니다." if shop.preview else "토큰으로 고양이와 배경을 해금해요 · 현금 결제 준비 중 · 능력치는 모두 같아요"
+	var caption := "[테스트 상점] 가상 토큰만 사용하며 실제 결제·구매 내역과 분리됩니다." if shop.preview else "토큰으로 고양이와 배경을 해금해요 · 현금 결제 준비 중 · 기본 무기가 달라요"
 	_label(overlay, shop_notice if not shop_notice.is_empty() else caption, Vector2(26, 321), 10, GameSkin.MUTED)
 
 func _change_shop_tab(tab: int) -> void:
@@ -669,13 +669,13 @@ func _show_cosmetics() -> void:
 		_label(overlay, AlleyTheme.NAMES[id] if background else CatPixel.NAMES[id], Vector2(x + 10, 213), 12 if background else 17)
 		var owned := (collection.themes if background else collection.unlocked).has(id)
 		var selected := id == (collection.selected_theme if background else collection.selected)
-		_label(overlay, "선택한 산책길" if selected and background else "함께 산책 중" if selected else "보유 중" if owned else "미리 보는 산책길" if background else "아직 만나지 않은 친구", Vector2(x + 10, 241), 9, GameSkin.MUTED)
+		_label(overlay, ("선택한 배경" if selected else "보유 중" if owned else "잠긴 배경") if background else "기본 무기: " + NightContent.SHORT[NightContent.CAT_STARTERS[id]], Vector2(x + 10, 241), 9, GameSkin.MUTED)
 		var price: int = CatCollection.THEME_PRICES[id] if background else CatCollection.PRICES[id]
 		var button := _button(overlay, "선택됨" if selected else "선택하기" if owned else "%d 토큰 · 해금" % price, Rect2(x + 10, 268, 118, 27), _cat_action.bind(id, background), selected)
 		button.disabled = selected or shop.busy
 
 func _show_token_packs() -> void:
-	_label(overlay, "토큰 한 지갑으로, 고양이도 골목도", Vector2(28, 104), 17)
+	_label(overlay, "토큰으로 고양이와 배경을 해금해요", Vector2(28, 104), 17)
 	for index in 3:
 		var x := 26 + index * 198
 		_panel(overlay, Rect2(x, 142, 188, 135), GameSkin.SURFACE, 14)
@@ -727,11 +727,11 @@ func _page(title_text: String, page_state: String) -> void:
 	back.z_index = 20
 
 func _show_stages() -> void:
-	_page("오늘은 어디를 걸을까?", "stages")
+	_page("스테이지 선택", "stages")
 	for mode in 2:
-		var button := _button(overlay, ["일반 산책", "도전 산책"][mode], Rect2(26 + mode * 132, 62, 124, 30), _set_difficulty.bind(mode), selected_difficulty == mode)
+		var button := _button(overlay, ["보통", "어려움"][mode], Rect2(26 + mode * 132, 62, 124, 30), _set_difficulty.bind(mode), selected_difficulty == mode)
 		button.disabled = mode == 1 and progress.cleared.is_empty()
-	_label(overlay, "도전은 첫 보스 처치 후 · 탄막과 예고 시간이 달라져요", Vector2(302, 71), 10, GameSkin.MUTED)
+	_label(overlay, "어려움: 첫 보스 처치 후 해금 · 더 많은 적과 탄막", Vector2(302, 71), 10, GameSkin.MUTED)
 	for index in 3:
 		var x := 26 + index * 198
 		_panel(overlay, Rect2(x, 110, 188, 198), GameSkin.SURFACE, 14)
@@ -742,7 +742,7 @@ func _show_stages() -> void:
 		_label(overlay, NightContent.BOSSES[index], Vector2(x + 14, 235), 11)
 		var button := _button(overlay, "다시 산책" if progress.cleared.has(index) else "산책 시작" if progress.stage_open(index) else "이전 골목을 완료하세요", Rect2(x + 10, 266, 168, 30), _begin_stage.bind(index), progress.stage_open(index))
 		button.disabled = not progress.stage_open(index)
-	_label(overlay, "시작 버릇: " + WEAPON_NAMES[progress.starter] + " · 쉼터에서 바꿀 수 있어요", Vector2(26, 326), 11, GameSkin.MUTED)
+	_label(overlay, CatPixel.NAMES[collection.selected] + " · 기본 무기: " + WEAPON_NAMES[NightContent.CAT_STARTERS[collection.selected]], Vector2(26, 326), 11, GameSkin.MUTED)
 
 func _set_difficulty(mode: int) -> void:
 	if mode == 1 and progress.cleared.is_empty():
@@ -759,9 +759,9 @@ func _begin_stage(index: int) -> void:
 func _show_shelter() -> void:
 	_page("우리 골목의 작은 쉼터", "shelter")
 	var saved := progress.recover_pending()
-	_chip(overlay, "산책 기억  %d" % progress.memories, Rect2(26, 61, 140, 28))
+	_chip(overlay, "간식  %d" % progress.memories, Rect2(26, 61, 140, 28))
 	for tab in 3:
-		_button(overlay, ["쉼터 꾸미기", "시작 버릇", "발견 기록"][tab], Rect2(190 + tab * 140, 61, 132, 28), _shelter_tab.bind(tab), shelter_tab == tab)
+		_button(overlay, ["쉼터 꾸미기", "무기 도감", "발견 기록"][tab], Rect2(190 + tab * 140, 61, 132, 28), _shelter_tab.bind(tab), shelter_tab == tab)
 	if shelter_tab == 0:
 		var art := ShelterArt.new()
 		art.cat_variant = collection.selected
@@ -775,7 +775,7 @@ func _show_shelter() -> void:
 			_label(overlay, NightContent.FURNITURE[index], at + Vector2(10, 8), 12)
 			_label(overlay, NightContent.WEAPONS[index + 4] + " 해금", at + Vector2(10, 31), 10, GameSkin.MUTED)
 			var owned := progress.furniture.has(index)
-			var button := _button(overlay, "쉼터에 있어요" if owned else "기억 %d · 들여놓기" % NightContent.FURNITURE_COST[index], Rect2(at + Vector2(8, 57), Vector2(148, 28)), _furnish.bind(index))
+			var button := _button(overlay, "쉼터에 있어요" if owned else "간식 %d개 · 해금" % NightContent.FURNITURE_COST[index], Rect2(at + Vector2(8, 57), Vector2(148, 28)), _furnish.bind(index))
 			button.disabled = owned or progress.memories < NightContent.FURNITURE_COST[index]
 	elif shelter_tab == 1:
 		for index in 8:
@@ -784,16 +784,15 @@ func _show_shelter() -> void:
 			_label(overlay, NightContent.SHORT[index], at + Vector2(10, 7), 14)
 			_label(overlay, ["관통", "경로", "연쇄", "공포", "이동 미끼", "벽 반사", "멈춤·기습", "끌어모으기"][index], at + Vector2(10, 33), 10, GameSkin.MUTED)
 			var owned := progress.available_weapons().has(index)
-			var button := _button(overlay, "선택됨" if progress.starter == index else "시작 버릇 선택" if owned else "쉼터에서 발견", Rect2(at + Vector2(8, 58), Vector2(124, 28)), _starter.bind(index), progress.starter == index)
-			button.disabled = not owned or progress.starter == index
+			_label(overlay, "레벨 업 때 획득 가능" if owned else "쉼터 꾸미기로 해금", at + Vector2(10, 65), 10, GameSkin.MINT if owned else GameSkin.MUTED)
 	else:
 		for index in 3:
 			var y := 112 + index * 64
 			_panel(overlay, Rect2(26, y, 588, 55), GameSkin.SURFACE, 10)
 			var found := progress.clues.has(index)
-			_label(overlay, NightContent.CLUES[index] if found else "아직 맡아보지 못한 냄새", Vector2(40, y + 7), 14)
+			_label(overlay, NightContent.CLUES[index] if found else "아직 찾지 못한 단서", Vector2(40, y + 7), 14)
 			_label(overlay, NightContent.CLUE_NOTES[index] if found else NightContent.STAGES[index] + "에서 흔적을 찾아보세요.", Vector2(40, y + 31), 11, GameSkin.MUTED)
-	_label(overlay, "산책 기억은 플레이로만 모아요 · 유료 토큰과 별개 · 90초마다 기억 1개" if saved else "기록 저장에 실패했어요. 저장 공간을 확인한 뒤 쉼터를 다시 열어주세요.", Vector2(26, 327), 10, GameSkin.MUTED)
+	_label(overlay, "간식은 플레이로만 모아요 · 유료 토큰과 별개 · 생존 90초마다 1개 · 기본 보상 최대 8개" if saved else "기록 저장에 실패했어요. 저장 공간을 확인한 뒤 쉼터를 다시 열어주세요.", Vector2(26, 327), 10, GameSkin.MUTED)
 
 func _shelter_tab(tab: int) -> void:
 	shelter_tab = tab
@@ -801,11 +800,7 @@ func _shelter_tab(tab: int) -> void:
 
 func _furnish(index: int) -> void:
 	if progress.buy_furniture(index):
-		audio.play("evolve")
-	_show_shelter()
-
-func _starter(index: int) -> void:
-	progress.choose_starter(index)
+		audio.play("upgrade")
 	_show_shelter()
 
 func _show_story() -> void:

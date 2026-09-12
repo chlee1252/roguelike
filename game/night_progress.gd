@@ -52,7 +52,7 @@ func _save() -> bool:
 func settle(run_id: String, stage: int, won: bool, seconds: float, found: bool) -> bool:
 	last_notice = ""
 	if settled.has(run_id):
-		last_notice = "이 산책의 기억은 쉼터에 보관했어요"
+		last_notice = "이미 보상을 받았어요"
 		return true
 	if run_id.is_empty() or stage < 0 or stage >= 3 or not is_finite(seconds) or seconds < 0:
 		return false
@@ -67,7 +67,7 @@ func settle(run_id: String, stage: int, won: bool, seconds: float, found: bool) 
 		clues.append(stage)
 	settled.append(run_id)
 	if _save():
-		last_notice = "산책 기억 +%d · 쉼터에서 새 버릇을 발견해요" % reward
+		last_notice = "간식 +%d개 · 쉼터에서 새 무기를 해금해요" % reward
 		return true
 	memories = old_memories
 	cleared.assign(old_cleared)

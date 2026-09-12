@@ -604,7 +604,7 @@ func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -
 			for bullet in hostile.capacity:
 				hostile.release(bullet)
 			clue_found = true
-			events.append("익숙한 냄새가 돌아옵니다")
+			events.append("보스 처치! 골목이 조용해졌어요.")
 		if rng.randf() < 0.012:
 			pickups.spawn(at + Vector2(8, 0), 1, 25, Vector2.ZERO, 22)
 		add_effect(at, 14 if type < 4 or type == 6 else 30, 0.42, 2)
@@ -940,7 +940,7 @@ func _take_item(kind: int) -> void:
 func _night_events(_dt: float) -> void:
 	if elapsed >= 45 and clue_at == Vector2.ZERO and not clue_found:
 		clue_at = open_position(player + Vector2(115, 45))
-		events.append("킁킁… 익숙한 물건의 냄새! 발자국 표시를 따라가요")
+		events.append("단서가 나타났어요! 발자국 표시를 따라가세요.")
 	if not clue_found and clue_at != Vector2.ZERO and player.distance_to(clue_at) < 26:
 		clue_found = true
 		events.append(NightContent.CLUE_NOTES[stage_id])

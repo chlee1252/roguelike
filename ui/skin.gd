@@ -2,7 +2,7 @@ class_name GameSkin
 extends RefCounted
 
 const REGULAR = preload("res://assets/fonts/Pretendard-Regular.ttf")
-const BOLD = preload("res://assets/fonts/Pretendard-Bold.ttf")
+const BOLD = preload("res://assets/fonts/Jua-Regular.ttf")
 const INK := Color("fff2e3")
 const MUTED := Color("c9bfd2")
 const MINT := Color("f1c99f")
