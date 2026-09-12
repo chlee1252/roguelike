@@ -67,7 +67,7 @@ func settle(run_id: String, stage: int, won: bool, seconds: float, found: bool) 
 		clues.append(stage)
 	settled.append(run_id)
 	if _save():
-		last_notice = "간식 +%d개 · 쉼터에서 새 무기를 해금해요" % reward
+		last_notice = "간식 +%d개 · 쉼터에서 새 무기를 얻을 수 있어요" % reward
 		return true
 	memories = old_memories
 	cleared.assign(old_cleared)

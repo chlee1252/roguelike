@@ -694,7 +694,7 @@ func _show_cats() -> void:
 		_show_token_packs()
 	else:
 		_show_cosmetics()
-	var caption := "[테스트 상점] 가상 토큰만 사용하며 실제 결제·구매 내역과 분리됩니다." if shop.preview else "토큰으로 고양이와 배경을 해금해요 · 현금 결제 준비 중 · 기본 무기가 달라요"
+	var caption := "[테스트 상점] 가상 토큰만 사용하며 실제 결제·구매 내역과 분리됩니다." if shop.preview else "토큰으로 고양이와 배경을 구매해요 · 현금 결제 준비 중 · 기본 무기가 달라요"
 	_label(overlay, shop_notice if not shop_notice.is_empty() else caption, Vector2(26, 321), 10, GameSkin.MUTED)
 
 func _change_shop_tab(tab: int) -> void:
@@ -728,11 +728,11 @@ func _show_cosmetics() -> void:
 		var selected := id == (collection.selected_theme if background else collection.selected)
 		_label(overlay, ("선택한 배경" if selected else "보유 중" if owned else "잠긴 배경") if background else "기본 무기: " + NightContent.SHORT[NightContent.CAT_STARTERS[id]], Vector2(x + 10, 241), 9, GameSkin.MUTED)
 		var price: int = CatCollection.THEME_PRICES[id] if background else CatCollection.PRICES[id]
-		var button := _button(overlay, "선택됨" if selected else "선택하기" if owned else "%d 토큰 · 해금" % price, Rect2(x + 10, 268, 118, 27), _cat_action.bind(id, background), selected)
+		var button := _button(overlay, "선택됨" if selected else "선택하기" if owned else "%d 토큰 · 구매" % price, Rect2(x + 10, 268, 118, 27), _cat_action.bind(id, background), selected)
 		button.disabled = selected or shop.busy
 
 func _show_token_packs() -> void:
-	_label(overlay, "토큰으로 고양이와 배경을 해금해요", Vector2(28, 104), 17)
+	_label(overlay, "토큰으로 고양이와 배경을 구매해요", Vector2(28, 104), 17)
 	for index in 3:
 		var x := 26 + index * 198
 		_panel(overlay, Rect2(x, 142, 188, 135), GameSkin.SURFACE, 14)
@@ -769,7 +769,7 @@ func _buy_tokens(index: int) -> void:
 func _refresh_shop() -> void:
 	shop_notice = await shop.refresh()
 	if shop_notice.is_empty():
-		shop_notice = "보유 토큰과 해금 내역을 확인했어요."
+		shop_notice = "보유 토큰과 구매 내역을 확인했어요."
 	if state == "cats":
 		_show_cats()
 
@@ -788,7 +788,7 @@ func _show_stages() -> void:
 	for mode in 2:
 		var button := _button(overlay, ["보통", "어려움"][mode], Rect2(26 + mode * 132, 62, 124, 30), _set_difficulty.bind(mode), selected_difficulty == mode)
 		button.disabled = mode == 1 and progress.cleared.is_empty()
-	_label(overlay, "어려움: 첫 보스 처치 후 해금 · 더 많은 적과 탄막", Vector2(302, 71), 10, GameSkin.MUTED)
+	_label(overlay, "어려움: 보스 처치 후 열림 · 적과 탄막 증가", Vector2(302, 71), 10, GameSkin.MUTED)
 	for index in 3:
 		var x := 26 + index * 198
 		_panel(overlay, Rect2(x, 110, 188, 198), GameSkin.SURFACE, 14)
@@ -830,9 +830,9 @@ func _show_shelter() -> void:
 			var at := Vector2(276 + (index % 2) * 173, 106 + int(index / 2) * 101)
 			_panel(overlay, Rect2(at, Vector2(164, 93)), GameSkin.SURFACE, 12)
 			_label(overlay, NightContent.FURNITURE[index], at + Vector2(10, 8), 12)
-			_label(overlay, NightContent.WEAPONS[index + 4] + " 해금", at + Vector2(10, 31), 10, GameSkin.MUTED)
+			_label(overlay, NightContent.WEAPONS[index + 4] + " 사용 가능", at + Vector2(10, 31), 10, GameSkin.MUTED)
 			var owned := progress.furniture.has(index)
-			var button := _button(overlay, "쉼터에 있어요" if owned else "간식 %d개 · 해금" % NightContent.FURNITURE_COST[index], Rect2(at + Vector2(8, 57), Vector2(148, 28)), _furnish.bind(index))
+			var button := _button(overlay, "쉼터에 있어요" if owned else "간식 %d개 · 구매" % NightContent.FURNITURE_COST[index], Rect2(at + Vector2(8, 57), Vector2(148, 28)), _furnish.bind(index))
 			button.disabled = owned or progress.memories < NightContent.FURNITURE_COST[index]
 	elif shelter_tab == 1:
 		for index in 8:
@@ -841,7 +841,7 @@ func _show_shelter() -> void:
 			_label(overlay, NightContent.SHORT[index], at + Vector2(10, 7), 14)
 			_label(overlay, ["관통", "경로", "연쇄", "공포", "이동 미끼", "벽 반사", "멈춤·기습", "끌어모으기"][index], at + Vector2(10, 33), 10, GameSkin.MUTED)
 			var owned := progress.available_weapons().has(index)
-			_label(overlay, "레벨 업 때 획득 가능" if owned else "쉼터 꾸미기로 해금", at + Vector2(10, 65), 10, GameSkin.MINT if owned else GameSkin.MUTED)
+			_label(overlay, "레벨 업 때 획득 가능" if owned else "쉼터 꾸미기로 사용 가능", at + Vector2(10, 65), 10, GameSkin.MINT if owned else GameSkin.MUTED)
 	else:
 		for index in 3:
 			var y := 112 + index * 64

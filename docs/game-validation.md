@@ -244,3 +244,11 @@ Pretendard 한글 폰트를 포함하고 메뉴, HUD, 장비 선택, 설정, 일
 사용자가 Apple 약관 동의를 완료한 뒤 자동 서명을 다시 시도했다. `generic/platform=iOS` 대상으로 개발용 서명 빌드가 성공했고 `codesign --verify --deep --strict`도 통과했다. 이전 `PLA Update available` 오류는 재발하지 않았다. 앱 표시 이름은 ‘골목의 밤냥’, 식별자는 `com.marc.catwalk`다.
 
 연결된 iPhone 17 Pro는 여전히 개발자 모드가 꺼져 있어 기기 지정 빌드가 `Developer Mode disabled`로 중단됐다. 생성 프로파일을 검사한 결과 이 iPhone의 UDID는 아직 포함되지 않았다. 따라서 현재 앱을 이 기기에 설치·실행했다고 볼 수 없다. 사용자가 개발자 모드를 켠 뒤 `scripts/install-iphone.sh`의 기기 지정 빌드(`-allowProvisioningDeviceRegistration`)로 등록·서명을 갱신하고 설치를 이어가야 한다.
+
+## 2026-09-12 — iPhone 설치·실행 성공 및 구매 문구 정리
+
+- iPhone 17 Pro(iOS 26.6.2)의 개발자 모드 활성화와 DDI 연결을 확인했다. 기기 지정 자동 서명 빌드가 성공했고, 생성된 프로파일에 연결한 iPhone이 포함되는 것을 검사했다.
+- `scripts/install-iphone.sh`의 빌드·서명·설치·실행 전체 경로가 성공했다. 기기의 설치 앱 목록에 ‘골목의 밤냥’/`com.marc.catwalk`가 나타났으며 실행 프로세스가 유지되는 것을 확인했다. 이전 약관/개발자 모드로 인한 설치 차단은 해소됐다.
+- Xcode의 실기기 스크린샷으로 상점의 고양이 4종과 버튼·텍스트 표시를 확인했다(`build/iphone-first-launch.png`). 스크린샷은 이전 문구가 보이는 수정 전 화면이다. 모터 진동의 촉감이나 장시간 플레이 난도까지 검증했다는 의미는 아니다.
+- 사용자 요청에 따라 게임 화면의 ‘해금’을 없앴다. 토큰 상점과 쉼터 물건은 ‘구매’, 무기는 ‘사용 가능’, 어려움 난도는 ‘보스 처치 후 열림’으로 구분했다. 결과 보상 안내와 현재 사용 문서도 수정했다. `game/`, `ui/`에 해당 표현이 남지 않은 것을 검색으로 확인했다.
+- 문구 변경 후 `VISUAL_TEST_OK`, 상점·쉼터 화면 검사를 통과했다. 수정한 최신 코드로 기기 지정 빌드·재설치·실행을 다시 성공했다(`build/iphone-copy-install.log`).
