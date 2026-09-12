@@ -94,8 +94,7 @@ func _draw() -> void:
 			if visible_rect.has_point(at):
 				_ghost(i, at)
 	var cat := (battle.player + shift).round()
-	if battle.invulnerable <= 0 or int(battle.elapsed * 20) % 2 == 0:
-		_cat(cat)
+	_cat(cat)
 	for pool in [battle.shots, battle.hostile]:
 		for i in pool.capacity:
 			if not pool.alive[i]:
@@ -143,7 +142,7 @@ func _cat(at: Vector2) -> void:
 	var frame := int(battle.walk_phase) % 4 if battle.moving else 0
 	var bounce := absf(sin(battle.walk_phase)) if battle.moving else sin(battle.elapsed * 2) * 0.35
 	var left := battle.aim.x < -0.05
-	var tint := Color(1, 1, 1, 0.45) if battle.hidden else Color.WHITE
+	var tint := Color(1, 1, 1, 0.55) if battle.hidden else Color(1, 1, 1, 0.7) if battle.invulnerable > 0 and int(battle.elapsed * 20) % 2 == 1 else Color.WHITE
 	draw_set_transform(at + Vector2(0, -bounce), 0, Vector2(-1 if left else 1, 1))
 	draw_texture_rect(sprites[frame], Rect2(-16, -25, 32, 32), false, tint)
 	var paw_interval := 0.36 if battle.evolved[0] else 0.45 if battle.weapons[0] >= 3 else 0.6
@@ -300,6 +299,15 @@ func _night_objects(shift: Vector2) -> void:
 			_text("바스락", at + Vector2(-12, -12), 8, Color("cce3d8"))
 	if battle.clue_at != Vector2.ZERO and not battle.clue_found:
 		var at := (battle.clue_at + shift).clamp(Vector2(30, 90), Vector2(610, 302))
-		draw_circle(at, 12, Color("f2d49d"), false, 1)
+		if battle.stage_id == 0:
+			draw_arc(at, 12, PI, TAU, 12, Color("e4c486"), 5)
+			draw_line(at, at + Vector2(0, 12), Color("bdb9b3"), 2)
+			draw_arc(at + Vector2(-3, 12), 3, 0, PI, 8, Color("bdb9b3"), 2)
+		elif battle.stage_id == 1:
+			draw_style_box(GameSkin.box(Color("9ebeba"), 4), Rect2(at - Vector2(12, 5), Vector2(24, 12)))
+			_text("★", at + Vector2(-4, 3), 8, Color("f2d49d"))
+		else:
+			draw_style_box(GameSkin.box(Color("baa6bd"), 4), Rect2(at - Vector2(13, 8), Vector2(26, 16)))
+			draw_line(at + Vector2(-8, -4), at + Vector2(8, 4), Color("d8c4d4"), 2)
 		_text("발자국", at + Vector2(-12, 3), 8, Color("f2d49d"))
 		_text(NightContent.CLUES[battle.stage_id], at + Vector2(-32, 24), 9, Color("eee0c2"))

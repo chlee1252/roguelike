@@ -11,6 +11,14 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var sim := Battle.new(918)
+	var stage := 0
+	var difficulty := 0
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--stage="):
+			stage = argument.trim_prefix("--stage=").to_int()
+		if argument.begins_with("--difficulty="):
+			difficulty = argument.trim_prefix("--difficulty=").to_int()
+	sim.configure(stage, difficulty, [0, 1, 2, 3], 0)
 	sim.god_mode = true
 	var times := PackedFloat64Array()
 	var max_enemies := 0
@@ -32,7 +40,14 @@ func _run() -> void:
 			_upgrade(sim)
 			check(sim.pending_levels >= 0, "Pending levels cannot be negative")
 		var start := Time.get_ticks_usec()
-		sim.step(1.0 / 60.0, sim.player.direction_to(target))
+		var direction := sim.player.direction_to(target)
+		if sim._building_at(sim.player + direction * 14):
+			for turn in [0.7, -0.7, 1.4, -1.4, PI]:
+				var candidate := direction.rotated(turn)
+				if not sim._building_at(sim.player + candidate * 14):
+					direction = candidate
+					break
+		sim.step(1.0 / 60.0, direction)
 		times.append((Time.get_ticks_usec() - start) / 1000.0)
 		max_enemies = maxi(max_enemies, sim.enemies.count)
 		max_hostile = maxi(max_hostile, sim.hostile.count)
@@ -56,6 +71,7 @@ func _run() -> void:
 	check(sim.evolved.has(true), "Normal XP and cache progression must allow an evolution")
 	check(max_enemies <= 500 and max_hostile <= 600, "Entity caps must hold across the entire run")
 	times.sort()
+	print("CAMPAIGN stage=%d difficulty=%d elapsed=%.1f" % [stage, difficulty, sim.elapsed])
 	print("SIMULATION p95_ms=%.3f max_ms=%.3f max_enemies=%d max_hostile=%d level=%d kills=%d" % [times[int(times.size() * 0.95)], times[-1], max_enemies, max_hostile, sim.level, sim.kills])
 	_stress()
 	print("FULL_RUN_TEST_OK" if failures == 0 else "FULL_RUN_TEST_FAILED %d" % failures)

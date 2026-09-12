@@ -150,6 +150,26 @@ func _stages() -> void:
 	clue.ambush_charge = 0.6
 	check(restored.restore(bytes_to_var(var_to_bytes(clue.snapshot()))), "Expanded run must restore")
 	check(var_to_bytes(restored.snapshot()) == var_to_bytes(clue.snapshot()), "Restore must preserve new weapon, story and event state")
+	var legacy := clue.snapshot().duplicate(true)
+	legacy.version = 3
+	for key in ["weapons", "supports", "evolved", "damage_dealt"]:
+		legacy[key].resize(3)
+	for key in ["stage_id", "difficulty", "available", "landmarks", "extra_clocks", "still_time", "bag_distance", "ambush_charge", "catnip", "lures", "clue_at", "clue_found", "next_event", "last_damage"]:
+		legacy.erase(key)
+	for key in ["enemies", "shots", "hostile", "pickups"]:
+		legacy[key].erase("fear")
+	check(Battle.new(1).restore(legacy), "Version-three runs must migrate without losing their run")
+	var broken := clue.snapshot().duplicate(true)
+	broken.lures[0].at = "invalid"
+	check(not Battle.new(1).restore(broken), "Malformed lure data must be rejected before restore")
+	for stage in 3:
+		var sim := Battle.new(8)
+		sim.configure(stage, 0, [0], 0)
+		var inside: Vector2 = sim.obstacles[0].get_center()
+		sim._drop_xp(inside, 5)
+		for id in sim.pickups.capacity:
+			if sim.pickups.alive[id]:
+				check(not sim._building_at(sim.pickups.position[id]), "Defeated ghosts must drop XP outside solid geometry")
 
 func _progress() -> void:
 	var path := "user://adventure-unit.cfg"
@@ -168,6 +188,12 @@ func _progress() -> void:
 	var reload := NightProgress.new()
 	reload.open(path)
 	check(reload.starter == 4 and reload.memories == balance - 3 and reload.stage_open(1), "Persistent progression must survive restart")
+	var journal := ConfigFile.new()
+	journal.set_value("claim", "data", ["run-b", 1, true, 720.0, true])
+	journal.save(path + ".pending")
+	check(reload.recover_pending() and reload.stage_open(2), "Interrupted result settlement must recover from its journal")
+	var settled_balance := reload.memories
+	check(reload.recover_pending() and reload.memories == settled_balance, "Journal recovery must be idempotent")
 	reload.path = "user://missing-adventure-directory/save.cfg"
 	var old := reload.memories
 	check(not reload.buy_furniture(1) and reload.memories == old, "Failed progression save must roll back")

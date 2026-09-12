@@ -54,7 +54,7 @@ func settle(run_id: String, stage: int, won: bool, seconds: float, found: bool) 
 	if settled.has(run_id):
 		last_notice = "이 산책의 기억은 쉼터에 보관했어요"
 		return true
-	if run_id.is_empty() or stage < 0 or stage >= 3 or seconds < 0:
+	if run_id.is_empty() or stage < 0 or stage >= 3 or not is_finite(seconds) or seconds < 0:
 		return false
 	var old_memories := memories
 	var old_cleared := cleared.duplicate()

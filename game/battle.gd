@@ -208,7 +208,13 @@ func _spawn(dt: float) -> void:
 				type = 3
 			if type < 3 or _type_count(type) < ([0, 0, 0, 4, 3, 2][type]):
 				spawn_enemy(type, _spawn_position())
-	for event in [[120, 6], [240, 4], [360, 6], [480, 5], [NightContent.BOSS_AT[stage_id], 7]]:
+	var schedule := [[120, 6], [240, 4], [360, 6], [480, 5]]
+	if stage_id > 0:
+		schedule.append([600, 6])
+	if stage_id == 2:
+		schedule.append([720, 4])
+	schedule.append([NightContent.BOSS_AT[stage_id], 7])
+	for event in schedule:
 		if elapsed >= event[0] and not fired_events.has(event[0]):
 			if enemies.count >= enemies.capacity:
 				for i in enemies.capacity:
@@ -589,7 +595,7 @@ func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -
 		kills += 1
 		_drop_xp(at, 30 if type >= 6 else 8 if type >= 4 else 2 if type > 0 else 1)
 		if type == 6 or elite_ids.get(id, -1) == enemies.generation[id]:
-			caches.append(at)
+			caches.append(open_position(at))
 			elite_ids.erase(id)
 		if type == 7:
 			finished = true
@@ -604,6 +610,7 @@ func _hurt_enemy(id: int, amount: float, weapon: int, can_spread: bool = true) -
 		add_effect(at, 14 if type < 4 or type == 6 else 30, 0.42, 2)
 
 func _drop_xp(at: Vector2, value: int) -> void:
+	at = open_position(at)
 	var closest := -1
 	var distance := INF
 	for i in pickups.capacity:

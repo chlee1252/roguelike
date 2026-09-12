@@ -149,6 +149,8 @@ func _build_hud() -> void:
 	_panel(hud, Rect2(12, 324, 616, 26), Color(0.06, 0.11, 0.14, 0.88), 9)
 	loadout = _label(hud, "", Vector2(24, 330), 9, GameSkin.MUTED)
 	wave_label = _label(hud, "", Vector2(150, 58), 13, Color("e6c69b"))
+	wave_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	wave_label.size = Vector2(440, 42)
 	wave_label.add_theme_stylebox_override("normal", GameSkin.box(Color(0.06, 0.09, 0.15, 0.94), 8))
 	wave_label.size.x = 340
 	wave_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -406,9 +408,10 @@ func _show_upgrades(keep_options: bool = false) -> void:
 		_label(overlay, rank_text, Vector2(x + 69, 148), 10, tint)
 		var description := _describe(id)
 		_label(overlay, description[0], Vector2(x + 14, 185), 16)
-		var detail := _label(overlay, description[1], Vector2(x + 14, 212), 10, GameSkin.MUTED)
-		detail.size = Vector2(160, 78)
+		var detail := _label(overlay, "", Vector2(x + 14, 212), 10, GameSkin.MUTED)
 		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		detail.size = Vector2(160, 78)
+		detail.text = description[1]
 		_button(overlay, "선택하기  ·  %d" % (i + 1), Rect2(x, 304, 188, 36), _choose.bind(id), i == 0)
 	if battle.rerolls > 0:
 		_button(overlay, "다시 뽑기 · 1회", Rect2(482, 27, 130, 34), _reroll)
@@ -813,8 +816,9 @@ func _show_story() -> void:
 	art.position = Vector2(26, 90)
 	overlay.add_child(art)
 	_label(overlay, NightContent.CLUES[battle.stage_id], Vector2(294, 106), 21)
-	var story := _label(overlay, NightContent.ENDINGS[battle.stage_id], Vector2(294, 152), 14, GameSkin.MUTED)
-	story.size = Vector2(307, 120)
+	var story := _label(overlay, "", Vector2(294, 152), 14, GameSkin.MUTED)
 	story.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	story.size = Vector2(307, 120)
+	story.text = NightContent.ENDINGS[battle.stage_id]
 	_button(overlay, "쉼터에서 쉬기", Rect2(294, 285, 148, 38), _show_shelter, true)
 	_button(overlay, "다음 산책길", Rect2(452, 285, 148, 38), _show_stages)
