@@ -238,3 +238,9 @@ Pretendard 한글 폰트를 포함하고 메뉴, HUD, 장비 선택, 설정, 일
 ## 2026-09-12 — 표시 제목 복원
 
 사용자 요청으로 표시 제목을 다시 **골목의 밤냥**으로 변경했다. 프로젝트·빌드 파일명 `CatWalk`과 앱 식별자 `com.marc.catwalk`는 유지한다. 실제 메뉴 렌더링 `VISUAL_TEST_OK`, Android APK의 표시 이름, iOS 실기기용 Xcode 프로젝트의 표시 이름을 확인했다. iPhone 서명·설치에 필요한 외부 조건은 이전 기록과 동일하며 이번 제목 변경으로 설치 완료를 의미하지 않는다.
+
+## 2026-09-12 — 약관 동의 후 iPhone 재시도
+
+사용자가 Apple 약관 동의를 완료한 뒤 자동 서명을 다시 시도했다. `generic/platform=iOS` 대상으로 개발용 서명 빌드가 성공했고 `codesign --verify --deep --strict`도 통과했다. 이전 `PLA Update available` 오류는 재발하지 않았다. 앱 표시 이름은 ‘골목의 밤냥’, 식별자는 `com.marc.catwalk`다.
+
+연결된 iPhone 17 Pro는 여전히 개발자 모드가 꺼져 있어 기기 지정 빌드가 `Developer Mode disabled`로 중단됐다. 생성 프로파일을 검사한 결과 이 iPhone의 UDID는 아직 포함되지 않았다. 따라서 현재 앱을 이 기기에 설치·실행했다고 볼 수 없다. 사용자가 개발자 모드를 켠 뒤 `scripts/install-iphone.sh`의 기기 지정 빌드(`-allowProvisioningDeviceRegistration`)로 등록·서명을 갱신하고 설치를 이어가야 한다.
