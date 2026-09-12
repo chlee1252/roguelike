@@ -225,3 +225,12 @@ Pretendard 한글 폰트를 포함하고 메뉴, HUD, 장비 선택, 설정, 일
 - `bash scripts/test-game.sh --render`: 기존 전체 검사와 `HAPTICS_TEST_OK`, 실제 설정 화면 캡처까지 통과했다. 새 설정 화면은 5개 항목과 실기기 테스트 버튼을 표시한다.
 - Android APK 내보내기 성공. `aapt dump permissions build/LastCommando.apk`에서 `android.permission.VIBRATE` 포함을 확인했다.
 - 연결 가능한 휴대폰이 없어 실제 햅틱 감촉은 확인하지 못했다. 시뮬레이터를 통한 물리 진동 검증으로 대체하지 않았다. 실기기 테스트 절차는 [햅틱 안내](haptics.md)에 정리했다.
+
+## 2026-09-12 — 고양이 산책 / CatWalk 이름 변경과 iPhone 연결
+
+- 표시 이름을 ‘고양이 산책’, 프로젝트·실행 파일·빌드 산출물을 `CatWalk`, 앱 식별자를 `com.marc.catwalk`로 변경했다. 앱 장면과 환경 확인 화면, 현재 README·기획 문서도 갱신했다. 과거 검증 기록의 이전 이름은 기록 그대로 보존한다.
+- `bash scripts/test-game.sh --render` 전체 통과. 환경 확인 장면도 `ENVIRONMENT_SMOKE_OK`. 메뉴 이미지의 새 제목을 확인했다.
+- Android `build/CatWalk.apk` 내보내기 성공. aapt에서 패키지 `com.marc.catwalk`와 표시 이름 ‘고양이 산책’을 확인했다.
+- 실기기 전용 `iOS Device` 프리셋을 추가했다. `build/ios-device/CatWalk.xcodeproj`를 iPhoneOS ARM64 대상으로 서명 없이 컴파일하여 `BUILD SUCCEEDED`를 확인했다. 생성 앱의 CFBundleDisplayName과 CFBundleIdentifier도 새 값이다. 이는 설치 가능한 서명 앱의 검증과는 다르다.
+- USB로 연결된 iPhone 17 Pro(iOS 26.6.2)를 페어링했다. 확인 시 개발자 모드는 꺼져 있었다. 자동 서명 시 Apple이 `PLA Update available` 오류로 최신 개발자 계정 약관 동의를 요구해 새 앱 프로비저닝 프로파일을 발급받지 못했다. 기기 설정과 계정 약관 동의는 사용자에게 요청한 상태이며 이 기록 시점에는 설치·실행을 완료하지 못했다.
+- `scripts/install-iphone.sh <UDID> <TEAM_ID>`로 최신 내보내기·기기별 서명·설치·실행을 반복할 수 있다. 셸 구문 검사를 통과했다. 실제 서명/설치 전체 경로는 위 외부 조건 해소 후 검증해야 한다. 개인 계정 정보나 인증서는 저장소에 추가하지 않았다.

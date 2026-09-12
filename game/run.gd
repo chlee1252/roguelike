@@ -207,7 +207,7 @@ func _show_menu() -> void:
 	hud.visible = false
 	_clear_overlay()
 	_panel(overlay, Rect2(0, 0, 640, 360), GameSkin.BASE, 0)
-	_label(overlay, "골목의 밤냥", Vector2(32, 23), 16)
+	_label(overlay, "고양이 산책", Vector2(32, 23), 16)
 	_button(overlay, "쉼터", Rect2(335, 20, 80, 32), _show_shelter)
 	_button(overlay, "고양이 · 상점", Rect2(425, 20, 112, 32), _show_cats)
 	_button(overlay, "설정", Rect2(548, 20, 60, 32), _show_settings)

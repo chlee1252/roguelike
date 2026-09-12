@@ -15,16 +15,16 @@
 
 ## 실기기에서 확인하기
 
-1. Android는 USB 디버깅을 켜고 연결한 뒤 아래 명령으로 설치한다. iPhone은 README의 iOS 프로젝트 내보내기 후 Xcode에서 개발 팀과 서명을 설정하고 연결한 iPhone을 실행 대상으로 선택한다.
+1. Android는 USB 디버깅을 켜고 연결한 뒤 아래 명령으로 설치한다. iPhone은 README의 ‘iPhone 실기기에 설치하기’ 절차에서 `iOS Device` 프리셋과 `scripts/install-iphone.sh`를 사용한다.
 2. **설정 → 햅틱(진동) 켜짐 → 진동 테스트**로 모터 동작을 확인한다.
 3. 효과음만 끄고 테스트해도 진동이 나는지 확인한다. 햅틱을 끄면 테스트 버튼이 비활성화되고 전투 중에도 진동이 없어야 한다.
 4. 실제 플레이에서 피격·레벨 업·진화·보스 처치를 확인한다. 앱을 홈으로 보냈다가 복귀했을 때 지난 이벤트가 뒤늦게 울리지 않아야 한다.
 5. 앱을 재실행해 끄기 설정이 유지되는지 확인한다. 짧은 피격 진동이 거슬리거나 승리 진동이 너무 강한지는 실기기 플레이로 조정한다.
 
 ```sh
-godot --headless --path . --export-debug Android build/LastCommando.apk
+godot --headless --path . --export-debug Android build/CatWalk.apk
 adb devices
-adb install -r build/LastCommando.apk
+adb install -r build/CatWalk.apk
 ```
 
 ## 검증 범위

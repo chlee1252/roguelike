@@ -1,4 +1,4 @@
-# 골목의 밤냥
+# 고양이 산책
 
 어느 날부터 귀신이 보이기 시작한 평범한 길고양이가 한국의 밤골목을 산책하는 Godot 4 자동전투 로그라이트입니다. 고양이는 세상을 구하러 나선 영웅이 아닙니다. 밥과 안전한 자리를 찾아 걷다 괴이를 돌려보냅니다.
 
@@ -29,7 +29,7 @@ godot --path .
 
 에디터로 열려면 `godot --editor --path .`을 실행하세요.
 
-빌드 파일명 `LastCommando`와 패키지 ID `com.lastcommando.prototype`은 기존 설치·시뮬레이터 명령 호환을 위해 유지했습니다. 화면에 표시되는 게임 이름은 **골목의 밤냥**이며, 새 저장 형식을 사용해 이전 군사 테마 저장 데이터와 분리합니다.
+앱 이름은 **고양이 산책**, 프로젝트·빌드 파일명은 **CatWalk**, 앱 식별자는 `com.marc.catwalk`입니다. 이전 군사 테마 식별자를 교체했습니다. 앱 식별자가 바뀌어 이전 테스트 앱과 별도로 설치되며, 기존 앱의 저장 데이터는 자동으로 옮겨지지 않습니다.
 
 ## Android 에뮬레이터에서 열기
 
@@ -40,7 +40,7 @@ godot --path .
 ```sh
 cd /Users/marc/dev/roguelike
 mkdir -p build
-godot --headless --path . --export-debug Android build/LastCommando.apk
+godot --headless --path . --export-debug Android build/CatWalk.apk
 ```
 
 터미널에서 에뮬레이터 창을 엽니다. 이 명령은 에뮬레이터를 종료할 때까지 실행 상태로 남습니다.
@@ -58,24 +58,49 @@ export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
 cd /Users/marc/dev/roguelike
 export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
 "$ANDROID_SDK_ROOT/platform-tools/adb" -s emulator-5582 wait-for-device
-"$ANDROID_SDK_ROOT/platform-tools/adb" -s emulator-5582 install --no-incremental -r build/LastCommando.apk
+"$ANDROID_SDK_ROOT/platform-tools/adb" -s emulator-5582 install --no-incremental -r build/CatWalk.apk
 "$ANDROID_SDK_ROOT/platform-tools/adb" -s emulator-5582 shell am start -W \
-  -n com.lastcommando.prototype/com.godot.game.GodotAppLauncher
+  -n com.marc.catwalk/com.godot.game.GodotAppLauncher
 ```
 
 게임은 가로 화면으로 열립니다. 마우스로 누르고 끌어 이동할 수 있습니다. 이미 Android Studio에서 실행한 기기를 쓴다면 `adb devices`로 확인한 ID를 `emulator-5582` 대신 넣으세요. 설치 대상은 ARM64 기기여야 합니다. 코드 수정 후 APK 생성·설치·실행을 반복하면 됩니다.
 
+## iPhone 실기기에 설치하기
+
+평소 사용하는 iPhone에 별도 개발 앱으로 설치할 수 있습니다. USB로 연결하고 컴퓨터 신뢰를 허용한 뒤, iPhone의 **설정 → 개인정보 보호 및 보안 → 개발자 모드**를 켜고 재시동 후 확인합니다. Xcode에는 본인의 Apple 계정과 개발 팀이 설정되어 있어야 합니다. Apple 개발자 사이트에 최신 약관 동의 요청이 있으면 본인이 확인해야 서명이 진행됩니다.
+
+실기기 전용 프리셋과 설치 스크립트를 추가했습니다. 아래의 `IPHONE_UDID`와 `APPLE_TEAM_ID`를 실제 값으로 바꿔 실행합니다. UDID는 Xcode의 Devices and Simulators, 팀 ID는 개발자 계정의 Membership details에서 확인할 수 있습니다.
+
+```sh
+cd /Users/marc/dev/roguelike
+bash scripts/install-iphone.sh IPHONE_UDID APPLE_TEAM_ID
+```
+
+이 스크립트는 최신 게임을 `build/ios-device/CatWalk.xcodeproj`로 내보내고, 연결한 기기용으로 서명·빌드·설치·실행합니다. 개인 팀 ID나 인증서를 저장소에 넣지 않습니다. 필요한 기기 등록과 프로파일 발급은 Xcode 자동 서명을 사용합니다. 실패 이유는 `build/catwalk-iphone-build.log`에 남습니다. 약관 동의나 계정 로그인이 필요한 경우 자동으로 우회하지 않습니다.
+
+직접 Xcode에서 진행하려면 다음 명령으로 프로젝트를 만드세요.
+
+```sh
+mkdir -p build/ios-device
+godot --headless --path . --export-debug 'iOS Device' build/ios-device/CatWalk.zip
+open build/ios-device/CatWalk.xcodeproj
+```
+
+**Signing & Capabilities → Automatically manage signing → 본인 Team**, 실행 대상은 연결한 iPhone을 선택하고 `⌘R`로 실행합니다. 프리셋의 팀 ID `0000000000`은 자리표시자입니다. 실기기에는 아래 시뮬레이터용 `ARCHS=x86_64` 또는 `CODE_SIGNING_ALLOWED=NO` 명령을 사용하지 않습니다.
+
+설치 후 **고양이 산책 → 설정 → 햅틱(진동) → 진동 테스트**에서 확인하세요. [햅틱 테스트 안내](docs/haptics.md).
+
 ## iOS 시뮬레이터에서 열기
 
-이 노트북에서 검증한 기기는 **LastCommando QA / iPhone 16 Pro / iOS 18.4**입니다. 현재 설치된 Godot 4.7.2 템플릿의 시뮬레이터 라이브러리는 x86_64만 포함하므로, Xcode 빌드와 시뮬레이터 모두 x86_64로 실행해야 합니다. 기본 ARM64 iOS 26.4 기기에는 이 빌드가 설치되지 않습니다.
+이 노트북에서 검증한 기기는 **CatWalk QA / iPhone 16 Pro / iOS 18.4**입니다. 현재 설치된 Godot 4.7.2 템플릿의 시뮬레이터 라이브러리는 x86_64만 포함하므로, Xcode 빌드와 시뮬레이터 모두 x86_64로 실행해야 합니다. 기본 ARM64 iOS 26.4 기기에는 이 빌드가 설치되지 않습니다.
 
 먼저 Xcode 프로젝트를 내보내고 서명 없이 시뮬레이터용 앱을 빌드합니다.
 
 ```sh
 cd /Users/marc/dev/roguelike
 mkdir -p build/ios
-godot --headless --path . --export-debug 'iOS Simulator' build/ios/LastCommando.zip
-xcodebuild -project build/ios/LastCommando.xcodeproj -scheme LastCommando \
+godot --headless --path . --export-debug 'iOS Simulator' build/ios/CatWalk.zip
+xcodebuild -project build/ios/CatWalk.xcodeproj -scheme CatWalk \
   -configuration Debug -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath build/ios-x86-derived ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES \
@@ -90,8 +115,8 @@ xcrun simctl boot "$IOS_DEVICE_ID" --arch=x86_64
 xcrun simctl bootstatus "$IOS_DEVICE_ID" -b
 open -a Simulator --args -CurrentDeviceUDID "$IOS_DEVICE_ID"
 xcrun simctl install "$IOS_DEVICE_ID" \
-  /Users/marc/dev/roguelike/build/ios-x86-derived/Build/Products/Debug-iphonesimulator/LastCommando.app
-xcrun simctl launch "$IOS_DEVICE_ID" com.lastcommando.prototype
+  /Users/marc/dev/roguelike/build/ios-x86-derived/Build/Products/Debug-iphonesimulator/CatWalk.app
+xcrun simctl launch "$IOS_DEVICE_ID" com.marc.catwalk
 ```
 
 이미 같은 아키텍처로 부팅했다면 `boot` 명령은 생략합니다. ARM64로 켰다면 해당 QA 기기만 `xcrun simctl shutdown "$IOS_DEVICE_ID"`으로 끈 후 다시 부팅하세요. 최초 부팅은 수 분 걸릴 수 있습니다. 창이 세로 방향이면 Simulator의 **Device → Rotate Left/Right**로 회전합니다. 마우스로 드래그해 이동하세요.
@@ -127,7 +152,7 @@ Godot의 Editor Settings → Export → Android에서 JDK 17 및 SDK 경로를 �
 macOS 앱 빌드:
 
 ```sh
-godot --headless --path . --export-debug macOS build/LastCommando.zip
+godot --headless --path . --export-debug macOS build/CatWalk.zip
 ```
 
 현재 전투 구조·무기 진화·분 단위 웨이브는 [게임 설계](docs/gameplay.md), 기존 플랫폼 검증 결과는 [게임 검증 기록](docs/game-validation.md), 초기 설치 기록은 [환경 검증](docs/environment-validation.md)에 정리했습니다.
